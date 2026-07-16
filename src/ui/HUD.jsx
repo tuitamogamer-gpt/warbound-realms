@@ -8,6 +8,7 @@ import { FACTIONS, GAME } from '../data/constants'
 import { effStats, xpForNextLevel } from '../game/rules'
 import { QUESTS } from '../data/quests'
 import { TALENTS } from '../data/talents'
+import { ABILITIES, abilityArt, maxAbilitySlots } from '../data/abilities'
 import { sfx, isMuted, setMuted } from '../game/sfx'
 import CamControls from './CamControls'
 
@@ -22,7 +23,7 @@ function Bar({ value, max, cls }) {
 
 function HeroPanel({ player }) {
   const useConsumable = useGame((s) => s.useConsumable)
-  const useMend = useGame((s) => s.useMendOutOfCombat)
+  const castAnytime = useGame((s) => s.castAnytime)
   const openSheet = useGame((s) => s.openSheet)
   const inCombat = useGame((s) => !!s.combat)
   const hero = HEROES[player.heroId]
@@ -63,19 +64,37 @@ function HeroPanel({ player }) {
         <span title="Gold">💰 {player.gold}</span>
         <span title="Victory points">🏆 {player.vp} VP</span>
       </div>
-      <div className="ability-row" title={hero.ability.desc}>
-        <b>{hero.ability.name}</b> ({hero.ability.cost}⚡) — {hero.ability.desc}
-        {hero.ability.id === 'mend' && !inCombat && (
-          <button
-            className="chip"
-            disabled={player.energy < hero.ability.cost || player.hp >= eff.maxHp}
-            onClick={() => {
-              sfx.levelup()
-              useMend()
-            }}
-          >
-            Cast
-          </button>
+      <div className="ability-strip">
+        {(player.abilities || []).map((aid) => {
+          const ab = ABILITIES[aid]
+          const canCast =
+            ab.anytime && !inCombat && player.energy >= ab.energy && player.hp < eff.maxHp
+          return (
+            <div
+              className={`ability-chip ${ab.type === 'passive' ? 'ability-passive' : ''}`}
+              key={aid}
+              title={`${ab.name}${ab.type === 'active' ? ` (${ab.energy}⚡)` : ' (passive)'} — ${ab.desc}`}
+            >
+              <img src={abilityArt(aid)} alt={ab.name} />
+              {ab.anytime && !inCombat && (
+                <button
+                  className="ability-cast"
+                  disabled={!canCast}
+                  onClick={() => {
+                    sfx.levelup()
+                    castAnytime(aid)
+                  }}
+                >
+                  Cast
+                </button>
+              )}
+            </div>
+          )
+        })}
+        {player.abilities.length < maxAbilitySlots(player.level) && (
+          <div className="ability-chip ability-empty" title="Free ability slot — train at a town!">
+            ＋
+          </div>
         )}
       </div>
       <button

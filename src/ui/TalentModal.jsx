@@ -9,9 +9,12 @@ export default function TalentModal() {
   const combat = useGame((s) => s.combat)
   const eventReveal = useGame((s) => s.eventReveal)
   const sheetOpen = useGame((s) => s.sheetOpen)
+  const celebrations = useGame((s) => s.celebrations)
+  const questDraw = useGame((s) => s.questDraw)
   const chooseTalent = useGame((s) => s.chooseTalent)
 
-  if (!player || combat || eventReveal || sheetOpen != null) return null
+  if (!player || combat || eventReveal || sheetOpen != null || celebrations.length || questDraw)
+    return null
   const pending = player.pendingTalents || []
   if (!pending.length) return null
 

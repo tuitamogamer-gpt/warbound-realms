@@ -26,7 +26,7 @@ function Table() {
 // A leather play-mat under the tiles, with a gold trim and engraved title.
 function BoardMat() {
   const trim = useMemo(() => {
-    const w = 11.9, h = 7.1
+    const w = 11.9, h = 8.5
     return [
       [-w, 0, -h], [w, 0, -h], [w, 0, h], [-w, 0, h], [-w, 0, -h],
     ]
@@ -34,12 +34,12 @@ function BoardMat() {
   return (
     <group>
       <mesh position={[0, -0.1, 0]} receiveShadow>
-        <boxGeometry args={[24.6, 0.12, 14.8]} />
+        <boxGeometry args={[24.6, 0.12, 17.6]} />
         <meshStandardMaterial color="#211508" roughness={0.9} />
       </mesh>
       <Line points={trim} position={[0, -0.03, 0]} color="#8a6b32" lineWidth={1.5} transparent opacity={0.8} />
       <Text
-        position={[0, -0.028, 6.75]}
+        position={[0, -0.028, 7.9]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={0.5}
         letterSpacing={0.25}
@@ -49,7 +49,7 @@ function BoardMat() {
         WARBOUND REALMS
       </Text>
       <Text
-        position={[-10.8, -0.028, -6.3]}
+        position={[-11.2, -0.028, -7.9]}
         rotation={[-Math.PI / 2, 0, 0]}
         fontSize={0.42}
         color="#8a6b32"

@@ -1,7 +1,14 @@
+import { creatureArt } from './creatures'
+import { regionArt } from './regions'
+
 // Quest types:
 //  killCreature — slay the named creature anywhere
 //  killTier     — slay any creature of the tier (optionally in a specific region)
 //  visit        — end a move in the region
+
+// Card art: hunt quests show their prey, travel quests show the destination.
+export const questArt = (quest) =>
+  quest.type === 'killCreature' ? creatureArt(quest.creature) : regionArt(quest.region)
 export const QUESTS = [
   {
     id: 'wolves_at_the_door',

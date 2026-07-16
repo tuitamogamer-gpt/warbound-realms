@@ -1,8 +1,10 @@
 import { ITEMS } from '../data/items'
 import { HEROES } from '../data/heroes'
+import { ABILITIES } from '../data/abilities'
 import { XP_THRESHOLDS, LEVEL_BONUSES } from '../data/constants'
 
-// Effective stats = leveled base stats (stored on the player) + equipped items.
+// Effective stats = leveled base stats (stored on the player)
+// + equipped items + passive abilities.
 export function effStats(player) {
   const eff = {
     dice: player.dice,
@@ -12,6 +14,9 @@ export function effStats(player) {
     maxEnergy: player.maxEnergy,
     goldPerKill: 0,
     firstStrike: false,
+    energyRegen: 0,
+    killHeal: 0,
+    firstRoundDice: 0,
   }
   for (const itemId of player.items) {
     const fx = ITEMS[itemId]?.effects || {}
@@ -22,6 +27,18 @@ export function effStats(player) {
     if (fx.energy) eff.maxEnergy += fx.energy
     if (fx.goldPerKill) eff.goldPerKill += fx.goldPerKill
     if (fx.firstStrike) eff.firstStrike = true
+  }
+  for (const abilityId of player.abilities || []) {
+    const ab = ABILITIES[abilityId]
+    if (!ab || ab.type !== 'passive') continue
+    const fx = ab.effect
+    if (fx.armor) eff.armor += fx.armor
+    if (fx.move) eff.move += fx.move
+    if (fx.energy) eff.maxEnergy += fx.energy
+    if (fx.maxHp) eff.maxHp += fx.maxHp
+    if (fx.regen) eff.energyRegen += fx.regen
+    if (fx.killHeal) eff.killHeal += fx.killHeal
+    if (fx.firstRoundDice) eff.firstRoundDice += fx.firstRoundDice
   }
   return eff
 }
@@ -48,6 +65,7 @@ export function makePlayer(idx, name, heroId) {
     region: null, // set at game start (faction capital)
     items: [],
     consumables: [],
+    abilities: [hero.signature],
     quests: [],
     completed: [],
     talents: [],

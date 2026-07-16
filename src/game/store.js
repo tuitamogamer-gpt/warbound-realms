@@ -2,13 +2,13 @@ import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { TALENTS } from '../data/talents'
+import { ABILITIES, maxAbilitySlots } from '../data/abilities'
 import { GAME, FACTIONS } from '../data/constants'
 import { REGIONS } from '../data/regions'
 import { CREATURES, creaturesOfTier } from '../data/creatures'
 import { ITEMS } from '../data/items'
 import { EVENTS, EVENT_LIST } from '../data/events'
 import { QUESTS } from '../data/quests'
-import { HEROES } from '../data/heroes'
 import { rollDice, heroHits, creatureHits, shuffle, pick } from './dice'
 import { effStats, makePlayer, applyXp } from './rules'
 
@@ -56,13 +56,25 @@ const grantXp = (s, player, amount) => {
   }
 }
 
-const drawQuest = (s, player) => {
-  if (!s.questDeck.length) {
-    const used = new Set(s.players.flatMap((p) => [...p.quests, ...p.completed]))
-    s.questDeck = shuffle(QUESTS.map((q) => q.id).filter((id) => !used.has(id)))
+// Offer the active player a choice of two quests whenever they are below the
+// active-quest limit (and no other resolution is in progress).
+const openQuestDraw = (s) => {
+  const p = currentPlayer(s)
+  if (s.combat || s.winner || s.questDraw || s.celebrations.length) return
+  if (p.dead || p.quests.length >= GAME.MAX_ACTIVE_QUESTS) return
+  if (s.questDeck.length < 2) {
+    // exclude every player's active AND completed quests so nobody can
+    // re-complete a quest for a second reward
+    const used = new Set([
+      ...s.players.flatMap((pl) => [...pl.quests, ...pl.completed]),
+      ...s.questDeck,
+    ])
+    const refill = shuffle(QUESTS.map((q) => q.id).filter((id) => !used.has(id)))
+    s.questDeck = [...refill, ...s.questDeck]
   }
-  const id = s.questDeck.pop()
-  if (id) player.quests.push(id)
+  const options = [s.questDeck.pop(), s.questDeck.pop()].filter(Boolean)
+  if (!options.length) return
+  s.questDraw = { playerIdx: p.idx, options }
 }
 
 const completeQuest = (s, player, quest) => {
@@ -71,9 +83,8 @@ const completeQuest = (s, player, quest) => {
   player.gold += quest.reward.gold
   player.vp += quest.reward.vp
   addLog(s, `${player.name} completed "${quest.name}" (+${quest.reward.xp} XP, +${quest.reward.gold} gold, +${quest.reward.vp} VP)`, 'good')
-  addToast(s, `📜 Quest complete: ${quest.name}`, 'quest')
   grantXp(s, player, quest.reward.xp)
-  drawQuest(s, player)
+  s.celebrations.push({ questId: quest.id, playerName: player.name })
 }
 
 const checkVisitQuests = (s, player) => {
@@ -128,6 +139,7 @@ const beginTurn = (s) => {
   const penalty = eventMod(s).movePenalty || 0
   s.movesLeft = Math.max(1, effStats(p).move - penalty)
   s.actionUsed = false
+  openQuestDraw(s)
 }
 
 const finishRoundCheck = (s) => {
@@ -232,6 +244,8 @@ export const useGame = create(
     movesLeft: 0,
     actionUsed: false,
     combat: null,
+    questDraw: null,
+    celebrations: [],
     shopOpen: false,
     rulesOpen: false,
     sheetOpen: null,
@@ -258,14 +272,12 @@ export const useGame = create(
         s.bossHp = 0
         s.eventDeck = shuffle(EVENT_LIST.map((e) => e.id))
         s.questDeck = shuffle(QUESTS.map((q) => q.id))
-        for (const p of s.players) {
-          drawQuest(s, p)
-          drawQuest(s, p)
-        }
         s.log = []
         s.logSeq = 1
         s.toasts = []
         s.combat = null
+        s.questDraw = null
+        s.celebrations = []
         s.winner = null
         s.screen = 'game'
         addLog(s, 'The war for Aetheria begins!', 'event')
@@ -279,6 +291,65 @@ export const useGame = create(
     openShop: (open) => set((s) => void (s.shopOpen = open)),
     openRules: (open) => set((s) => void (s.rulesOpen = open)),
     openSheet: (playerIdx) => set((s) => void (s.sheetOpen = playerIdx)),
+
+    // ---------- quests ----------
+    pickQuest: (questId) =>
+      set((s) => {
+        const qd = s.questDraw
+        if (!qd || !qd.options.includes(questId)) return
+        const p = s.players[qd.playerIdx]
+        p.quests.push(questId)
+        // the declined offer goes to the bottom of the deck
+        for (const other of qd.options) {
+          if (other !== questId) s.questDeck.unshift(other)
+        }
+        s.questDraw = null
+        const q = QUESTS.find((x) => x.id === questId)
+        addLog(s, `${p.name} accepts the quest "${q.name}".`)
+        checkVisitQuests(s, p) // the new quest may already be satisfied
+        openQuestDraw(s) // first turn draws twice
+      }),
+
+    dismissCelebration: () =>
+      set((s) => {
+        s.celebrations.shift()
+        if (!s.celebrations.length) openQuestDraw(s)
+      }),
+
+    // ---------- abilities ----------
+    buyAbility: (abilityId) =>
+      set((s) => {
+        const p = currentPlayer(s)
+        if (s.winner || p.dead) return
+        if (!REGIONS[p.region].town) return
+        const ab = ABILITIES[abilityId]
+        if (!ab || ab.signature || ab.heroId !== p.heroId) return
+        if (p.abilities.includes(abilityId)) return
+        if (p.abilities.length >= maxAbilitySlots(p.level)) return
+        if (p.gold < ab.cost) return
+        p.gold -= ab.cost
+        p.abilities.push(abilityId)
+        const eff = effStats(p)
+        p.hp = Math.min(Math.max(p.hp, 0), eff.maxHp)
+        p.energy = Math.min(p.energy, eff.maxEnergy)
+        addLog(s, `${p.name} trains ${ab.name} for ${ab.cost} gold.`, 'good')
+        addToast(s, `✨ ${p.name} learns ${ab.name}!`, 'level')
+      }),
+
+    castAnytime: (abilityId) =>
+      set((s) => {
+        const p = currentPlayer(s)
+        const ab = ABILITIES[abilityId]
+        if (s.winner || s.combat || !ab || !ab.anytime) return
+        if (!p.abilities.includes(abilityId) || p.energy < ab.energy) return
+        const eff = effStats(p)
+        if (ab.effect.heal && p.hp >= eff.maxHp) return
+        p.energy -= ab.energy
+        if (ab.effect.heal) {
+          p.hp = Math.min(eff.maxHp, p.hp + ab.effect.heal)
+          addLog(s, `${p.name} casts ${ab.name} (+${ab.effect.heal} HP).`)
+        }
+      }),
 
     chooseTalent: (talentId) =>
       set((s) => {
@@ -376,16 +447,6 @@ export const useGame = create(
         }
       }),
 
-    useMendOutOfCombat: () =>
-      set((s) => {
-        const p = currentPlayer(s)
-        const hero = HEROES[p.heroId]
-        if (hero.ability.id !== 'mend' || p.energy < hero.ability.cost || s.winner) return
-        if (p.hp >= effStats(p).maxHp) return
-        p.energy -= hero.ability.cost
-        p.hp = Math.min(effStats(p).maxHp, p.hp + 3)
-        addLog(s, `${p.name} casts Blessed Mend (+3 HP).`)
-      }),
 
     // ---------- combat ----------
     startCombat: (boss = false) =>
@@ -426,12 +487,11 @@ export const useGame = create(
         addLog(s, `${p.name} challenges ${creatureDef.name}!`, 'bad')
       }),
 
-    combatRound: (useAbility) =>
+    combatRound: (abilityId) =>
       set((s) => {
         const c = s.combat
         if (!c || c.over) return
         const p = s.players[c.playerIdx]
-        const hero = HEROES[p.heroId]
         const eff = effStats(p)
         const ev = eventMod(s)
         const creatureDef = CREATURES[c.defId]
@@ -441,30 +501,40 @@ export const useGame = create(
         let autoHits = 0
         let noRetaliation = false
         let noDamage = false
+        let critOn5 = false
 
-        if (useAbility && p.energy >= hero.ability.cost) {
-          p.energy -= hero.ability.cost
-          switch (hero.ability.id) {
-            case 'rage': bonusDice += 3; break
-            case 'fireball': autoHits += 3; break
-            case 'arcane_bolt': autoHits += 2; break
-            case 'ambush': noRetaliation = true; break
-            case 'shield_wall': noDamage = true; break
-            case 'mend':
-              p.hp = Math.min(eff.maxHp, p.hp + 3)
-              c.log.unshift({ text: 'Blessed Mend: +3 HP', cls: 'good' })
-              break
+        if (c.round === 1) bonusDice += eff.firstRoundDice
+
+        const ab = abilityId ? ABILITIES[abilityId] : null
+        if (
+          ab &&
+          ab.type === 'active' &&
+          p.abilities.includes(ab.id) &&
+          p.energy >= ab.energy &&
+          !(ab.effect.heal && p.hp >= eff.maxHp) // don't waste a heal at full health
+        ) {
+          p.energy -= ab.energy
+          const fx = ab.effect
+          if (fx.bonusDice) bonusDice += fx.bonusDice
+          if (fx.autoHits) autoHits += fx.autoHits
+          if (fx.noRetaliation) noRetaliation = true
+          if (fx.noDamage) noDamage = true
+          if (fx.critOn5) critOn5 = true
+          if (fx.heal) {
+            p.hp = Math.min(eff.maxHp, p.hp + fx.heal)
+            c.log.unshift({ text: `${ab.name}: +${fx.heal} HP`, cls: 'good' })
+          } else {
+            c.log.unshift({ text: `${ab.name}!`, cls: 'good' })
           }
-          if (hero.ability.id !== 'mend')
-            c.log.unshift({ text: `${hero.ability.name}!`, cls: 'good' })
         }
         if (eff.firstStrike && c.round === 1) noRetaliation = true
 
         // hero attack
         const heroDiceCount = eff.dice + (ev.heroDice || 0) + bonusDice
         const rolls = rollDice(heroDiceCount)
-        const hits = heroHits(rolls) + autoHits
+        const hits = heroHits(rolls, critOn5) + autoHits
         c.rollId = (c.rollId || 0) + 1
+        c.lastCritOn5 = critOn5
         c.lastHeroRolls = rolls
         c.lastAutoHits = autoHits
         c.hp = Math.max(0, c.hp - hits)
@@ -489,6 +559,10 @@ export const useGame = create(
           p.gold += gold
           p.vp += creatureDef.vp
           p.kills += 1
+          if (eff.killHeal > 0 && p.hp < eff.maxHp) {
+            p.hp = Math.min(eff.maxHp, p.hp + eff.killHeal)
+            c.log.unshift({ text: `Bloodthirst: +${eff.killHeal} HP`, cls: 'good' })
+          }
           s.creatures[c.regionId] = null
           s.respawnQueue[c.regionId] = s.round + 2
           c.log.unshift({ text: `${creatureDef.name} is slain! +${creatureDef.xp} XP, +${gold} gold, +${creatureDef.vp} VP`, cls: 'good' })
@@ -508,7 +582,7 @@ export const useGame = create(
           p.hp = Math.max(0, p.hp - dmg)
           c.log.unshift({
             text: noDamage
-              ? `${creatureDef.name} strikes — Shield Wall absorbs everything!`
+              ? `${creatureDef.name} strikes — ${ab.name} absorbs everything!`
               : `${creatureDef.name} rolls ${cDice} dice → ${dmg} damage${eff.armor && cHits ? ` (${cHits} hits − ${eff.armor} armor)` : ''}`,
             cls: dmg > 0 ? 'bad' : '',
           })
@@ -523,8 +597,7 @@ export const useGame = create(
           }
         } else {
           c.lastCreatureRolls = null
-          if (!eff.firstStrike || c.round !== 1 || useAbility)
-            c.log.unshift({ text: `${creatureDef.name} cannot strike back!`, cls: 'good' })
+          c.log.unshift({ text: `${creatureDef.name} cannot strike back!`, cls: 'good' })
         }
         c.round += 1
       }),
@@ -558,13 +631,14 @@ export const useGame = create(
       set((s) => {
         if (s.combat || s.winner) return
         const p = currentPlayer(s)
-        p.energy = Math.min(effStats(p).maxEnergy, p.energy + GAME.ENERGY_REGEN_PER_TURN)
+        const eff = effStats(p)
+        p.energy = Math.min(eff.maxEnergy, p.energy + GAME.ENERGY_REGEN_PER_TURN + eff.energyRegen)
         advanceTurn(s)
       }),
     })),
     {
       name: 'warbound-realms-save',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() =>
         typeof window !== 'undefined' ? window.localStorage : noopStorage
       ),

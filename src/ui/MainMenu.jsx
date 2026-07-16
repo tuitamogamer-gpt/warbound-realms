@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { HERO_LIST, heroArt } from '../data/heroes'
+import { ABILITIES } from '../data/abilities'
 import { FACTIONS, GAME } from '../data/constants'
 import { useGame } from '../game/store'
 import Rules from './Rules'
@@ -85,7 +86,7 @@ export default function MainMenu() {
                       style={{ '--fc': FACTIONS[h.faction].color }}
                       disabled={taken(h.id, i)}
                       onClick={() => pickHero(i, h.id)}
-                      title={`${h.name} — ${h.title}\n${h.ability.name}: ${h.ability.desc}`}
+                      title={`${h.name} — ${h.title}\n${ABILITIES[h.signature].name}: ${ABILITIES[h.signature].desc}`}
                     >
                       <img src={heroArt(h.id)} alt={h.name} />
                       <span className="hero-name">{h.name.replace(/^Ser /, '').split(' ')[0]}</span>

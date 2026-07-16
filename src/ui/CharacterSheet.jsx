@@ -3,6 +3,7 @@ import { useGame, selCurrentPlayer } from '../game/store'
 import { HEROES, heroArt } from '../data/heroes'
 import { ITEMS, itemArt } from '../data/items'
 import { TALENTS } from '../data/talents'
+import { ABILITIES, abilityArt, maxAbilitySlots } from '../data/abilities'
 import { QUESTS } from '../data/quests'
 import { FACTIONS } from '../data/constants'
 import { effStats, xpForNextLevel } from '../game/rules'
@@ -138,11 +139,39 @@ export default function CharacterSheet() {
 
           {/* right column: abilities & talents & quests */}
           <div className="sheet-col">
-            <div className="sheet-section-title">Abilities & Spells</div>
-            <div className="ability-card">
-              <div className="ability-card-head">✨ {hero.ability.name} <span className="ability-cost">{hero.ability.cost}⚡</span></div>
-              <div className="ability-card-desc">{hero.ability.desc}</div>
+            <div className="sheet-section-title">
+              Abilities & Spells · {player.abilities.length}/{maxAbilitySlots(player.level)} slots
             </div>
+            {(player.abilities || []).map((aid) => {
+              const ab = ABILITIES[aid]
+              return (
+                <div className="ability-card" key={aid}>
+                  <img className="ability-card-icon" src={abilityArt(aid)} alt={ab.name} />
+                  <div className="ability-card-body">
+                    <div className="ability-card-head">
+                      {ab.name}
+                      <span className="ability-cost">
+                        {ab.type === 'active' ? `${ab.energy}⚡${ab.anytime ? ' · anytime' : ''}` : 'passive'}
+                      </span>
+                    </div>
+                    <div className="ability-card-desc">{ab.desc}</div>
+                  </div>
+                </div>
+              )
+            })}
+            {Array.from(
+              { length: maxAbilitySlots(player.level) - player.abilities.length },
+              (_, i) => (
+                <div className="ability-card ability-slot-empty" key={`slot-${i}`}>
+                  Empty ability slot — train a new ability at any town.
+                </div>
+              )
+            )}
+            {maxAbilitySlots(player.level) < 3 && (
+              <div className="sheet-hint">
+                Next ability slot unlocks at level {player.level < 2 ? 2 : 4}.
+              </div>
+            )}
 
             {(player.talents || []).map((tid) => {
               const t = TALENTS[tid]

@@ -4,6 +4,7 @@ import { useGame, selCurrentPlayer, reachableRegions } from '../src/game/store.j
 import { REGIONS } from '../src/data/regions.js'
 import { ITEM_LIST } from '../src/data/items.js'
 import { talentsForLevel } from '../src/data/talents.js'
+import { ABILITIES, trainableForHero, maxAbilitySlots } from '../src/data/abilities.js'
 import { effStats } from '../src/game/rules.js'
 
 const rnd = (arr) => arr[Math.floor(Math.random() * arr.length)]
@@ -41,10 +42,38 @@ function playOneGame(gameIdx) {
         s.closeCombat()
       } else {
         const p = s.players[s.combat.playerIdx]
-        // flee if badly wounded, otherwise attack (sometimes with ability)
-        if (p.hp <= 2 && Math.random() < 0.8) s.combatFlee()
-        else s.combatRound(Math.random() < 0.4 && p.energy >= 2)
+        // flee if badly wounded, otherwise attack (sometimes with an ability)
+        if (p.hp <= 2 && Math.random() < 0.8) {
+          s.combatFlee()
+        } else {
+          let abilityId = null
+          if (Math.random() < 0.4) {
+            const usable = p.abilities
+              .map((id) => ABILITIES[id])
+              .filter((ab) => ab.type === 'active' && p.energy >= ab.energy)
+            if (usable.length) abilityId = rnd(usable).id
+          }
+          s.combatRound(abilityId)
+        }
       }
+      continue
+    }
+
+    if (s.celebrations.length) {
+      s.dismissCelebration()
+      continue
+    }
+
+    if (s.questDraw) {
+      const idx = s.questDraw.playerIdx
+      const before = s.players[idx].quests.length
+      const celebBefore = s.celebrations.length
+      s.pickQuest(rnd(s.questDraw.options))
+      const ns = useGame.getState()
+      const after = ns.players[idx].quests.length
+      // a visit quest for the region you're standing in completes instantly
+      const instantComplete = after === before && ns.celebrations.length > celebBefore
+      assert(after === before + 1 || instantComplete, 'quest pick adds one quest (or completes instantly)', { before, after })
       continue
     }
 
@@ -64,7 +93,12 @@ function playOneGame(gameIdx) {
     assert(p.hp >= 0 && p.hp <= eff.maxHp, 'hp within bounds', { hp: p.hp, max: eff.maxHp })
     assert(p.energy >= 0 && p.energy <= eff.maxEnergy, 'energy within bounds', { e: p.energy })
     assert(p.level >= 1 && p.level <= 5, 'level within bounds', { lvl: p.level })
-    assert(p.quests.length === 2 || s.questDeck.length === 0, 'always 2 active quests', { q: p.quests.length })
+    assert(p.quests.length <= 2, 'never more than 2 active quests', { q: p.quests.length })
+    assert(
+      p.abilities.length <= maxAbilitySlots(p.level),
+      'abilities within slot limit',
+      { a: p.abilities.length, lvl: p.level }
+    )
     assert(REGIONS[p.region], 'player on a real region', { r: p.region })
 
     const region = REGIONS[p.region]
@@ -81,8 +115,17 @@ function playOneGame(gameIdx) {
       continue
     }
     if (region.town && p.gold >= 4 && Math.random() < 0.5) {
-      const affordable = ITEM_LIST.filter((i) => i.cost <= p.gold)
-      if (affordable.length) s.buyItem(rnd(affordable).id)
+      // sometimes train an ability, sometimes buy an item
+      const freeSlots = maxAbilitySlots(p.level) - p.abilities.length
+      const learnable = trainableForHero(p.heroId).filter(
+        (ab) => !p.abilities.includes(ab.id) && ab.cost <= p.gold
+      )
+      if (freeSlots > 0 && learnable.length && Math.random() < 0.5) {
+        s.buyAbility(rnd(learnable).id)
+      } else {
+        const affordable = ITEM_LIST.filter((i) => i.cost <= p.gold)
+        if (affordable.length) s.buyItem(rnd(affordable).id)
+      }
     }
     if (!s.actionUsed && p.hp < eff.maxHp - 4 && region.town && Math.random() < 0.7) {
       s.rest()

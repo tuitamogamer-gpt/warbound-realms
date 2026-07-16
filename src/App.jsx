@@ -12,6 +12,8 @@ import Victory from './ui/Victory'
 import Rules from './ui/Rules'
 import CharacterSheet from './ui/CharacterSheet'
 import TalentModal from './ui/TalentModal'
+import QuestDrawModal from './ui/QuestDrawModal'
+import QuestCelebration from './ui/QuestCelebration'
 
 function LoadingBoard() {
   return (
@@ -40,6 +42,8 @@ export default function App() {
       <ShopModal />
       <CharacterSheet />
       <TalentModal />
+      <QuestCelebration />
+      <QuestDrawModal />
       {rulesOpen && <Rules onClose={() => openRules(false)} />}
     </div>
   )

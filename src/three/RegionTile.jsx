@@ -49,7 +49,7 @@ export default function RegionTile({ region, reachable, locked, creatureSlot, on
     }
   })
 
-  const r = region.id === 'blackspire' ? 1.7 : 1.45
+  const r = region.size ?? (region.id === 'blackspire' ? 1.7 : 1.45)
 
   return (
     <group position={[region.pos[0], 0, region.pos[1]]}>

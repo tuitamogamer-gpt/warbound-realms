@@ -3,12 +3,13 @@ import { useGame } from '../game/store'
 import { CREATURES, creatureArt } from '../data/creatures'
 import { HEROES, heroArt } from '../data/heroes'
 import { ITEMS, itemArt } from '../data/items'
+import { ABILITIES, abilityArt } from '../data/abilities'
 import { effStats } from '../game/rules'
 import { sfx } from '../game/sfx'
 
-function Die({ value, hitOn, crit, delay }) {
+function Die({ value, hitOn, critFrom = 99, delay }) {
   const isHit = value >= hitOn
-  const isCrit = crit && value >= 6
+  const isCrit = value >= critFrom
   return (
     <span
       className={`die ${isCrit ? 'die-crit' : isHit ? 'die-hit' : 'die-miss'}`}
@@ -26,10 +27,10 @@ export default function CombatModal() {
   const combatFlee = useGame((s) => s.combatFlee)
   const closeCombat = useGame((s) => s.closeCombat)
   const useConsumable = useGame((s) => s.useConsumable)
-  const [useAbility, setUseAbility] = useState(false)
+  const [selectedAbility, setSelectedAbility] = useState(null)
   const [shaking, setShaking] = useState(false)
 
-  useEffect(() => setUseAbility(false), [combat?.round, combat?.over])
+  useEffect(() => setSelectedAbility(null), [combat?.round, combat?.over])
 
   // victory / defeat stingers — only on a fresh false→true transition, so a
   // rehydrated already-finished combat doesn't replay the sound on load
@@ -48,13 +49,15 @@ export default function CombatModal() {
   const hero = HEROES[p.heroId]
   const def = CREATURES[combat.defId]
   const eff = effStats(p)
-  const canAbility = p.energy >= hero.ability.cost && !combat.over
+  const activeAbilities = (p.abilities || [])
+    .map((id) => ABILITIES[id])
+    .filter((ab) => ab && ab.type === 'active')
 
   const roll = () => {
     sfx.dice()
     setShaking(true)
     setTimeout(() => setShaking(false), 450)
-    combatRound(useAbility)
+    combatRound(selectedAbility)
   }
 
   return (
@@ -87,7 +90,7 @@ export default function CombatModal() {
               <div className="dice-row">
                 <span className="dice-label">You:</span>
                 {combat.lastHeroRolls.map((v, i) => (
-                  <Die key={`${combat.rollId}-${i}`} value={v} hitOn={4} crit delay={i * 70} />
+                  <Die key={`${combat.rollId}-${i}`} value={v} hitOn={4} critFrom={combat.lastCritOn5 ? 5 : 6} delay={i * 70} />
                 ))}
                 {combat.lastAutoHits > 0 && <span className="auto-hits">+{combat.lastAutoHits} auto</span>}
               </div>
@@ -112,15 +115,23 @@ export default function CombatModal() {
         {!combat.over ? (
           <>
             <div className="combat-options">
-              <label className={`ability-toggle ${!canAbility ? 'disabled' : ''} ${useAbility ? 'on' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={useAbility}
-                  disabled={!canAbility}
-                  onChange={(e) => setUseAbility(e.target.checked)}
-                />
-                ✨ {hero.ability.name} ({hero.ability.cost}⚡)
-              </label>
+              {activeAbilities.map((ab) => {
+                const usable =
+                  p.energy >= ab.energy && !(ab.effect.heal && p.hp >= eff.maxHp)
+                const on = selectedAbility === ab.id
+                return (
+                  <button
+                    key={ab.id}
+                    className={`ability-toggle ${!usable ? 'disabled' : ''} ${on ? 'on' : ''}`}
+                    disabled={!usable}
+                    title={ab.desc}
+                    onClick={() => setSelectedAbility(on ? null : ab.id)}
+                  >
+                    <img className="chip-icon" src={abilityArt(ab.id)} alt="" />
+                    {ab.name} ({ab.energy}⚡)
+                  </button>
+                )
+              })}
               {p.consumables.map((id, i) => (
                 <button
                   key={`${id}-${i}`}

@@ -26,7 +26,7 @@ export default function Rules({ onClose }) {
           <ul>
             <li>Each combat round you roll your <b>attack dice</b>: 4–5 = 1 hit, 6 = 2 hits. Hits wound the creature.</li>
             <li>If it survives, it strikes back: it rolls its dice and hits on 5+ (Vhalrax on 4+). Damage = its hits − your armor.</li>
-            <li>Before rolling you may use your hero <b>ability</b> (costs energy) or a consumable.</li>
+            <li>Before rolling you may use <b>one of your abilities</b> (costs energy) or a consumable.</li>
             <li>You may <b>flee</b> between rounds — the creature keeps its wounds.</li>
             <li>If you die: you lose half your gold and return to your capital, restored, on your next turn.</li>
           </ul>
@@ -34,11 +34,18 @@ export default function Rules({ onClose }) {
           <h3>Growth</h3>
           <ul>
             <li>Kills and quests give <b>XP</b>. Levels (max 5) grant health, energy, dice and armor.</li>
-            <li>At <b>levels 2 and 4</b> you choose a <b>talent</b> — a permanent upgrade of your own path.</li>
-            <li>Each hero always has <b>2 active quests</b> — finishing one draws a new one automatically.</li>
-            <li>Gold buys <b>items</b> in towns: one weapon, one armor, one trinket, plus up to 3 consumables.</li>
+            <li>At <b>levels 2 and 4</b> you choose a <b>talent</b> — and unlock a new <b>ability slot</b>.</li>
+            <li>Visit a town <b>Trainer</b> to buy class abilities with gold — attacks, wards and passives unique to your hero.</li>
+            <li>Gold also buys <b>items</b> in towns: one weapon, one armor, one trinket, plus up to 3 consumables.</li>
             <li>Press <b>C</b> (or click your portrait) to open the <b>character sheet</b> with equipment, spells and record.</li>
             <li>Slain creatures return to their region two rounds later.</li>
+          </ul>
+
+          <h3>Quests</h3>
+          <ul>
+            <li>You always work on up to <b>2 quests</b>. When below that, you <b>draw two quest cards and keep one</b>.</li>
+            <li>Quests reward <b>XP, gold and victory points</b> — shown on every card before you choose.</li>
+            <li>Hunt quests want a specific beast; travel quests just need you to reach a place.</li>
           </ul>
 
           <h3>Camera</h3>
