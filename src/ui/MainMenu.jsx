@@ -1,0 +1,114 @@
+import { useState } from 'react'
+import { HERO_LIST, heroArt } from '../data/heroes'
+import { FACTIONS, GAME } from '../data/constants'
+import { useGame } from '../game/store'
+import Rules from './Rules'
+
+export default function MainMenu() {
+  const startGame = useGame((s) => s.startGame)
+  const [count, setCount] = useState(2)
+  const [roster, setRoster] = useState([
+    { name: '', heroId: 'aldric' },
+    { name: '', heroId: 'grosh' },
+  ])
+  const [rulesOpen, setRulesOpen] = useState(false)
+
+  const setCountAndRoster = (n) => {
+    setCount(n)
+    setRoster((r) => {
+      const next = [...r]
+      const defaults = ['aldric', 'grosh', 'elowen', 'zyra']
+      while (next.length < n) next.push({ name: '', heroId: defaults[next.length] })
+      return next.slice(0, n)
+    })
+  }
+
+  const pickHero = (playerIdx, heroId) => {
+    setRoster((r) => r.map((p, i) => (i === playerIdx ? { ...p, heroId } : p)))
+  }
+  const setName = (playerIdx, name) => {
+    setRoster((r) => r.map((p, i) => (i === playerIdx ? { ...p, name } : p)))
+  }
+
+  const taken = (heroId, exceptIdx) =>
+    roster.some((p, i) => i !== exceptIdx && p.heroId === heroId)
+
+  const factions = roster.map((p) => HERO_LIST.find((h) => h.id === p.heroId).faction)
+  const bothFactions = new Set(factions).size === 2
+  const valid = bothFactions && new Set(roster.map((p) => p.heroId)).size === roster.length
+
+  return (
+    <div className="menu" style={{ backgroundImage: 'url(/assets/ui/title.jpg)' }}>
+      <div className="menu-scrim">
+        <h1 className="menu-title">Warbound Realms</h1>
+        <p className="menu-sub">A 3D fantasy adventure board game · 2–4 players · hotseat</p>
+
+        <div className="menu-panel">
+          <div className="menu-row">
+            <span className="menu-label">Players</span>
+            {[2, 3, 4].map((n) => (
+              <button
+                key={n}
+                className={`chip ${count === n ? 'chip-on' : ''}`}
+                onClick={() => setCountAndRoster(n)}
+              >
+                {n}
+              </button>
+            ))}
+            <button className="chip chip-ghost" onClick={() => setRulesOpen(true)}>
+              📖 How to play
+            </button>
+          </div>
+
+          {roster.map((p, i) => {
+            const hero = HERO_LIST.find((h) => h.id === p.heroId)
+            const faction = FACTIONS[hero.faction]
+            return (
+              <div className="setup-player" key={i}>
+                <div className="setup-head">
+                  <input
+                    className="name-input"
+                    placeholder={`Player ${i + 1} name`}
+                    value={p.name}
+                    maxLength={16}
+                    onChange={(e) => setName(i, e.target.value)}
+                  />
+                  <span className="faction-tag" style={{ color: faction.color }}>
+                    {faction.name}
+                  </span>
+                </div>
+                <div className="hero-picker">
+                  {HERO_LIST.map((h) => (
+                    <button
+                      key={h.id}
+                      className={`hero-card ${p.heroId === h.id ? 'hero-on' : ''} ${taken(h.id, i) ? 'hero-taken' : ''}`}
+                      style={{ '--fc': FACTIONS[h.faction].color }}
+                      disabled={taken(h.id, i)}
+                      onClick={() => pickHero(i, h.id)}
+                      title={`${h.name} — ${h.title}\n${h.ability.name}: ${h.ability.desc}`}
+                    >
+                      <img src={heroArt(h.id)} alt={h.name} />
+                      <span className="hero-name">{h.name.replace(/^Ser /, '').split(' ')[0]}</span>
+                      <span className="hero-class">{h.title.split(' ').pop()}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+
+          {!bothFactions && (
+            <p className="menu-warn">Both factions must be represented — pick at least one hero from each side.</p>
+          )}
+          <button className="btn-primary" disabled={!valid} onClick={() => startGame(roster)}>
+            ⚔ Begin the War
+          </button>
+        </div>
+        <p className="menu-credit">
+          Slay monsters, finish quests, level up — then kill Vhalrax the Undying before round {GAME.MAX_ROUNDS} ends.
+        </p>
+      </div>
+      {rulesOpen && <Rules onClose={() => setRulesOpen(false)} />}
+    </div>
+  )
+}

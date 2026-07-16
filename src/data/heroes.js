@@ -1,0 +1,97 @@
+// Six heroes of Aetheria. Base stats are level 1.
+export const HEROES = {
+  grosh: {
+    id: 'grosh',
+    name: 'Grosh Ironhide',
+    title: 'Orc Berserker',
+    faction: 'dominion',
+    base: { hp: 10, dice: 3, armor: 0, energy: 2, move: 2 },
+    ability: {
+      id: 'rage',
+      name: 'Blood Rage',
+      cost: 2,
+      desc: '+3 attack dice this combat round.',
+      combat: true,
+    },
+    blurb: 'A warchief who answers every question with an axe. Usually both axes.',
+  },
+  zyra: {
+    id: 'zyra',
+    name: 'Zyra Cinderweave',
+    title: 'Flame Sorceress',
+    faction: 'dominion',
+    base: { hp: 7, dice: 2, armor: 0, energy: 5, move: 2 },
+    ability: {
+      id: 'fireball',
+      name: 'Fireball',
+      cost: 3,
+      desc: 'Deal 3 automatic hits this combat round.',
+      combat: true,
+    },
+    blurb: 'Her hair caught fire the day she was born. The fire never lost.',
+  },
+  morvek: {
+    id: 'morvek',
+    name: 'Morvek Nightfang',
+    title: 'Panther-folk Shadowstalker',
+    faction: 'dominion',
+    base: { hp: 8, dice: 3, armor: 0, energy: 3, move: 3 },
+    ability: {
+      id: 'ambush',
+      name: 'Ambush',
+      cost: 2,
+      desc: 'The enemy does not strike back this combat round.',
+      combat: true,
+    },
+    blurb: 'You will hear his purr exactly once, and it will be too late.',
+  },
+  aldric: {
+    id: 'aldric',
+    name: 'Ser Aldric Dawnshield',
+    title: 'Human Knight',
+    faction: 'accord',
+    base: { hp: 11, dice: 2, armor: 1, energy: 2, move: 2 },
+    ability: {
+      id: 'shield_wall',
+      name: 'Shield Wall',
+      cost: 2,
+      desc: 'Take no damage this combat round.',
+      combat: true,
+    },
+    blurb: 'The last shield between the dark and the dawn — and he knows it.',
+  },
+  elowen: {
+    id: 'elowen',
+    name: 'Elowen Starbrook',
+    title: 'Elf Arcanist',
+    faction: 'accord',
+    base: { hp: 7, dice: 2, armor: 0, energy: 4, move: 2 },
+    ability: {
+      id: 'arcane_bolt',
+      name: 'Arcane Bolt',
+      cost: 2,
+      desc: 'Deal 2 automatic hits this combat round.',
+      combat: true,
+    },
+    blurb: 'She has read every book in Eldara. Twice. In the original starlight.',
+  },
+  torvald: {
+    id: 'torvald',
+    name: 'Torvald Lightmend',
+    title: 'Dwarf Cleric',
+    faction: 'accord',
+    base: { hp: 9, dice: 2, armor: 0, energy: 4, move: 2 },
+    ability: {
+      id: 'mend',
+      name: 'Blessed Mend',
+      cost: 2,
+      desc: 'Heal 3 health. Usable in and out of combat.',
+      combat: true,
+      anytime: true,
+    },
+    blurb: 'Half priest, half anvil. His prayers hit like hammers.',
+  },
+}
+
+export const HERO_LIST = Object.values(HEROES)
+export const heroArt = (id) => `/assets/heroes/${id}.jpg`

@@ -1,0 +1,51 @@
+export default function Rules({ onClose }) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal rules-modal" onClick={(e) => e.stopPropagation()}>
+        <h2>How to Play</h2>
+        <div className="rules-body">
+          <h3>Goal</h3>
+          <p>
+            Two factions — the <b style={{ color: '#5b9bff' }}>Radiant Accord</b> and the{' '}
+            <b style={{ color: '#ff6b6b' }}>Emberclaw Dominion</b> — race to slay{' '}
+            <b>Vhalrax the Undying</b>. He awakens at Blackspire Citadel at the start of{' '}
+            <b>round 6</b>. If nobody kills him by the end of <b>round 10</b>, the faction
+            with the most <b>victory points (VP)</b> wins (ties: most gold).
+          </p>
+
+          <h3>Your turn</h3>
+          <ul>
+            <li><b>Move</b> up to your Movement value along connected regions (click a glowing region).</li>
+            <li>Take <b>one action</b>: <b>Fight</b> a creature in your region, <b>Shop</b> in a town, or <b>Rest</b> (+4 HP, +2 energy).</li>
+            <li>You may keep moving after your action if you have movement left.</li>
+            <li>You cannot enter the enemy capital. Blackspire is sealed until Vhalrax awakens.</li>
+          </ul>
+
+          <h3>Combat</h3>
+          <ul>
+            <li>Each combat round you roll your <b>attack dice</b>: 4–5 = 1 hit, 6 = 2 hits. Hits wound the creature.</li>
+            <li>If it survives, it strikes back: it rolls its dice and hits on 5+ (Vhalrax on 4+). Damage = its hits − your armor.</li>
+            <li>Before rolling you may use your hero <b>ability</b> (costs energy) or a consumable.</li>
+            <li>You may <b>flee</b> between rounds — the creature keeps its wounds.</li>
+            <li>If you die: you lose half your gold and return to your capital, restored, on your next turn.</li>
+          </ul>
+
+          <h3>Growth</h3>
+          <ul>
+            <li>Kills and quests give <b>XP</b>. Levels (max 5) grant health, energy, dice and armor.</li>
+            <li>Each hero always has <b>2 active quests</b> — finishing one draws a new one automatically.</li>
+            <li>Gold buys <b>items</b> in towns: one weapon, one armor, one trinket, plus up to 3 consumables.</li>
+            <li>Slain creatures return to their region two rounds later.</li>
+          </ul>
+
+          <h3>Rounds &amp; events</h3>
+          <p>
+            Every round begins with an <b>event card</b> that shapes the whole round —
+            blood moons empower monsters, caravans lower prices, storms slow travel...
+          </p>
+        </div>
+        <button className="btn-primary" onClick={onClose}>Close</button>
+      </div>
+    </div>
+  )
+}

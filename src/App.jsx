@@ -1,0 +1,40 @@
+import { Suspense } from 'react'
+import { useGame } from './game/store'
+import BoardScene from './three/BoardScene'
+import MainMenu from './ui/MainMenu'
+import HUD from './ui/HUD'
+import CombatModal from './ui/CombatModal'
+import ShopModal from './ui/ShopModal'
+import EventReveal from './ui/EventReveal'
+import Victory from './ui/Victory'
+import Rules from './ui/Rules'
+
+function LoadingBoard() {
+  return (
+    <div className="board-loading">
+      <div className="board-loading-text">Setting the table…</div>
+    </div>
+  )
+}
+
+export default function App() {
+  const screen = useGame((s) => s.screen)
+  const rulesOpen = useGame((s) => s.rulesOpen)
+  const openRules = useGame((s) => s.openRules)
+
+  if (screen === 'menu') return <MainMenu />
+  if (screen === 'victory') return <Victory />
+
+  return (
+    <div className="game-root">
+      <Suspense fallback={<LoadingBoard />}>
+        <BoardScene />
+      </Suspense>
+      <HUD />
+      <EventReveal />
+      <CombatModal />
+      <ShopModal />
+      {rulesOpen && <Rules onClose={() => openRules(false)} />}
+    </div>
+  )
+}
