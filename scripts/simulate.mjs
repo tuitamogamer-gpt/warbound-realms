@@ -3,6 +3,7 @@
 import { useGame, selCurrentPlayer, reachableRegions } from '../src/game/store.js'
 import { REGIONS } from '../src/data/regions.js'
 import { ITEM_LIST } from '../src/data/items.js'
+import { talentsForLevel } from '../src/data/talents.js'
 import { effStats } from '../src/game/rules.js'
 
 const rnd = (arr) => arr[Math.floor(Math.random() * arr.length)]
@@ -49,6 +50,16 @@ function playOneGame(gameIdx) {
 
     const p = selCurrentPlayer(s)
     assert(p, 'current player exists')
+
+    // spend pending talent choices like a player would
+    if (p.pendingTalents?.length) {
+      const before = p.pendingTalents.length
+      s.chooseTalent(rnd(talentsForLevel(p.pendingTalents[0])).id)
+      const after = selCurrentPlayer(useGame.getState()).pendingTalents.length
+      assert(after === before - 1, 'talent choice consumed exactly one pending slot', { before, after })
+      continue
+    }
+
     const eff = effStats(p)
     assert(p.hp >= 0 && p.hp <= eff.maxHp, 'hp within bounds', { hp: p.hp, max: eff.maxHp })
     assert(p.energy >= 0 && p.energy <= eff.maxEnergy, 'energy within bounds', { e: p.energy })

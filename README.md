@@ -11,7 +11,16 @@ Two factions — the **Radiant Accord** and the **Emberclaw Dominion** — race 
 - **Dice combat** against 9 creature types across three danger tiers
 - **Quests, XP and levels (1–5)**, gold, and an item shop (weapons, armor, trinkets, consumables)
 - **Round events** that reshape each round (blood moons, caravans, storms...)
+- **Talents** — at levels 2 and 4 every hero picks a permanent upgrade
+- **Character sheet** (press `C`) — equipment slots, satchel, abilities, talents, record
 - At round 6, **Vhalrax the Undying** awakens — slay him to win instantly, or out-score the enemy faction in victory points by the end of round 10
+- **Auto-save** — the war resumes exactly where you left it, even after closing the tab
+
+### Camera
+
+Drag to rotate, scroll to zoom, right-drag to pan — or use the on-screen camera cluster.
+Hotkeys: `Q`/`E` rotate, `W`/`S` tilt, `+`/`−` zoom, `F` focus your hero, `R` reset view.
+Hover any region or creature for a detailed tooltip.
 
 ## Running locally
 

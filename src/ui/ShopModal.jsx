@@ -1,6 +1,7 @@
 import { useGame, selCurrentPlayer, selEventMod } from '../game/store'
 import { ITEM_LIST, ITEMS, itemArt } from '../data/items'
 import { GAME } from '../data/constants'
+import { sfx } from '../game/sfx'
 
 export default function ShopModal() {
   const open = useGame((s) => s.shopOpen)
@@ -35,7 +36,10 @@ export default function ShopModal() {
                 key={item.id}
                 className="shop-item"
                 disabled={disabled}
-                onClick={() => buyItem(item.id)}
+                onClick={() => {
+                  sfx.coin()
+                  buyItem(item.id)
+                }}
                 title={replaces ? `Replaces ${ITEMS[replaces].name}` : item.desc}
               >
                 <img src={itemArt(item.id)} alt={item.name} />

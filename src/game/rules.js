@@ -50,6 +50,8 @@ export function makePlayer(idx, name, heroId) {
     consumables: [],
     quests: [],
     completed: [],
+    talents: [],
+    pendingTalents: [],
     dead: false,
     kills: 0,
   }

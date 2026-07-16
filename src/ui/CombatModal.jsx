@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useGame } from '../game/store'
 import { CREATURES, creatureArt } from '../data/creatures'
 import { HEROES, heroArt } from '../data/heroes'
 import { ITEMS, itemArt } from '../data/items'
 import { effStats } from '../game/rules'
+import { sfx } from '../game/sfx'
 
 function Die({ value, hitOn, crit, delay }) {
   const isHit = value >= hitOn
@@ -30,6 +31,18 @@ export default function CombatModal() {
 
   useEffect(() => setUseAbility(false), [combat?.round, combat?.over])
 
+  // victory / defeat stingers — only on a fresh false→true transition, so a
+  // rehydrated already-finished combat doesn't replay the sound on load
+  const prevOver = useRef(!!combat?.over)
+  useEffect(() => {
+    const was = prevOver.current
+    prevOver.current = !!combat?.over
+    if (was || !combat?.over) return
+    if (combat.heroWon) sfx.kill()
+    else if (combat.heroDied) sfx.death()
+    else if (combat.fled) sfx.flee()
+  }, [combat?.over]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!combat) return null
   const p = players[combat.playerIdx]
   const hero = HEROES[p.heroId]
@@ -38,6 +51,7 @@ export default function CombatModal() {
   const canAbility = p.energy >= hero.ability.cost && !combat.over
 
   const roll = () => {
+    sfx.dice()
     setShaking(true)
     setTimeout(() => setShaking(false), 450)
     combatRound(useAbility)
@@ -121,7 +135,9 @@ export default function CombatModal() {
             </div>
             <div className="combat-buttons">
               <button className="btn-primary" onClick={roll}>🎲 Roll Attack</button>
-              <button className="btn-secondary" onClick={combatFlee}>🏃 Flee</button>
+              <button className="btn-secondary" onClick={combatFlee}>
+                🏃 Flee
+              </button>
             </div>
           </>
         ) : (

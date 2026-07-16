@@ -34,9 +34,18 @@ export default function Rules({ onClose }) {
           <h3>Growth</h3>
           <ul>
             <li>Kills and quests give <b>XP</b>. Levels (max 5) grant health, energy, dice and armor.</li>
+            <li>At <b>levels 2 and 4</b> you choose a <b>talent</b> — a permanent upgrade of your own path.</li>
             <li>Each hero always has <b>2 active quests</b> — finishing one draws a new one automatically.</li>
             <li>Gold buys <b>items</b> in towns: one weapon, one armor, one trinket, plus up to 3 consumables.</li>
+            <li>Press <b>C</b> (or click your portrait) to open the <b>character sheet</b> with equipment, spells and record.</li>
             <li>Slain creatures return to their region two rounds later.</li>
+          </ul>
+
+          <h3>Camera</h3>
+          <ul>
+            <li><b>Drag</b> to rotate, <b>scroll</b> to zoom, <b>right-drag</b> to pan around the table.</li>
+            <li>Keys: <b>Q/E</b> rotate, <b>W/S</b> tilt, <b>+/−</b> zoom, <b>F</b> focus your hero, <b>R</b> reset view.</li>
+            <li>Or use the camera buttons in the lower-right corner. Hover any region or creature for details.</li>
           </ul>
 
           <h3>Rounds &amp; events</h3>

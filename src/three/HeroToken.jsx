@@ -1,10 +1,14 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Billboard, useTexture } from '@react-three/drei'
+import { Billboard, useTexture, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { REGIONS } from '../data/regions'
 import { FACTIONS } from '../data/constants'
-import { heroArt } from '../data/heroes'
+import { HERO_LIST, heroArt } from '../data/heroes'
+import { effStats } from '../game/rules'
+
+// Preload hero art so tokens never suspend the canvas mid-game.
+HERO_LIST.forEach((h) => useTexture.preload(heroArt(h.id)))
 
 // Heroes stand on the west half of a tile, creatures on the east,
 // so multiple tokens on one region never overlap.
@@ -27,8 +31,9 @@ export default function HeroToken({ player, active }) {
     0.14,
     REGIONS[player.region].pos[1] + slot[1],
   ])
+  const hpFrac = Math.max(0, player.hp / effStats(player).maxHp)
 
-  useFrame(({ clock }, ) => {
+  useFrame(({ clock }) => {
     if (!group.current) return
     const pos = REGIONS[player.region].pos
     targetPos.current.set(pos[0] + slot[0], 0.14, pos[1] + slot[1])
@@ -58,11 +63,32 @@ export default function HeroToken({ player, active }) {
           <planeGeometry args={[0.62, 0.93]} />
           <meshStandardMaterial map={tex} side={THREE.DoubleSide} />
         </mesh>
-        {/* thin frame behind the card */}
         <mesh position={[0, 0, -0.011]}>
           <planeGeometry args={[0.7, 1.01]} />
           <meshStandardMaterial color={active ? '#ffd75e' : faction.colorDark} side={THREE.DoubleSide} />
         </mesh>
+        {/* hp sliver above the card */}
+        <group position={[0, 0.56, 0.01]}>
+          <mesh>
+            <planeGeometry args={[0.62, 0.07]} />
+            <meshBasicMaterial color="#320c0c" side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[(-0.62 * (1 - hpFrac)) / 2, 0, 0.002]}>
+            <planeGeometry args={[Math.max(0.01, 0.62 * hpFrac), 0.07]} />
+            <meshBasicMaterial color={hpFrac > 0.4 ? '#4d9e3a' : '#c43b3b'} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+        {/* player name under the base */}
+        <Text
+          position={[0, -0.62, 0.01]}
+          fontSize={0.15}
+          color={active ? '#ffd75e' : '#e8d9ae'}
+          outlineWidth={0.012}
+          outlineColor="#000000"
+          anchorX="center"
+        >
+          {player.name.length > 14 ? `${player.name.slice(0, 13)}…` : player.name}
+        </Text>
       </Billboard>
     </group>
   )

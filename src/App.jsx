@@ -10,6 +10,8 @@ import ShopModal from './ui/ShopModal'
 import EventReveal from './ui/EventReveal'
 import Victory from './ui/Victory'
 import Rules from './ui/Rules'
+import CharacterSheet from './ui/CharacterSheet'
+import TalentModal from './ui/TalentModal'
 
 function LoadingBoard() {
   return (
@@ -36,6 +38,8 @@ export default function App() {
       <EventReveal />
       <CombatModal />
       <ShopModal />
+      <CharacterSheet />
+      <TalentModal />
       {rulesOpen && <Rules onClose={() => openRules(false)} />}
     </div>
   )

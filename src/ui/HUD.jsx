@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useGame, selCurrentPlayer, selEventMod } from '../game/store'
 import { REGIONS } from '../data/regions'
 import { HEROES, heroArt } from '../data/heroes'
@@ -6,6 +7,9 @@ import { EVENTS, eventArt } from '../data/events'
 import { FACTIONS, GAME } from '../data/constants'
 import { effStats, xpForNextLevel } from '../game/rules'
 import { QUESTS } from '../data/quests'
+import { TALENTS } from '../data/talents'
+import { sfx, isMuted, setMuted } from '../game/sfx'
+import CamControls from './CamControls'
 
 function Bar({ value, max, cls }) {
   return (
@@ -19,6 +23,7 @@ function Bar({ value, max, cls }) {
 function HeroPanel({ player }) {
   const useConsumable = useGame((s) => s.useConsumable)
   const useMend = useGame((s) => s.useMendOutOfCombat)
+  const openSheet = useGame((s) => s.openSheet)
   const inCombat = useGame((s) => !!s.combat)
   const hero = HEROES[player.heroId]
   const eff = effStats(player)
@@ -28,11 +33,25 @@ function HeroPanel({ player }) {
   return (
     <div className="panel hero-panel" style={{ '--fc': faction.color }}>
       <div className="hero-head">
-        <img className="hero-portrait" src={heroArt(player.heroId)} alt={hero.name} />
+        <button
+          className="hero-portrait-btn"
+          title="Open character sheet (C)"
+          onClick={() => {
+            sfx.click()
+            openSheet(player.idx)
+          }}
+        >
+          <img className="hero-portrait" src={heroArt(player.heroId)} alt={hero.name} />
+        </button>
         <div>
           <div className="hero-title">{player.name}</div>
           <div className="hero-subtitle">{player.name === hero.name ? hero.title : `${hero.name} · ${hero.title}`}</div>
           <div className="hero-level">Level {player.level}{nextXp ? ` · ${player.xp}/${nextXp} XP` : ' · MAX'}</div>
+          <div className="hero-talents">
+            {(player.talents || []).map((tid) => (
+              <span key={tid} title={`${TALENTS[tid].name} — ${TALENTS[tid].desc}`}>{TALENTS[tid].icon}</span>
+            ))}
+          </div>
         </div>
       </div>
       <Bar value={player.hp} max={eff.maxHp} cls="bar-hp" />
@@ -50,12 +69,24 @@ function HeroPanel({ player }) {
           <button
             className="chip"
             disabled={player.energy < hero.ability.cost || player.hp >= eff.maxHp}
-            onClick={useMend}
+            onClick={() => {
+              sfx.levelup()
+              useMend()
+            }}
           >
             Cast
           </button>
         )}
       </div>
+      <button
+        className="chip chip-sheet"
+        onClick={() => {
+          sfx.click()
+          openSheet(player.idx)
+        }}
+      >
+        📜 Character Sheet <kbd>C</kbd>
+      </button>
       {(player.items.length > 0 || player.consumables.length > 0) && (
         <div className="item-row">
           {player.items.map((id) => (
@@ -120,6 +151,8 @@ function TopBar() {
   const bossSpawned = useGame((s) => s.bossSpawned)
   const bossHp = useGame((s) => s.bossHp)
   const openRules = useGame((s) => s.openRules)
+  const backToMenu = useGame((s) => s.backToMenu)
+  const [muted, setMutedState] = useState(isMuted())
   const ev = EVENTS[eventId]
   const vp = (f) => players.filter((p) => p.faction === f).reduce((n, p) => n + p.vp, 0)
 
@@ -138,7 +171,27 @@ function TopBar() {
         <span className="vp-chip" style={{ color: FACTIONS.accord.color }}>Accord {vp('accord')} 🏆</span>
         <span className="vp-chip" style={{ color: FACTIONS.dominion.color }}>Dominion {vp('dominion')} 🏆</span>
         {bossSpawned && bossHp > 0 && <span className="boss-chip">🐉 Vhalrax {bossHp}/25</span>}
-        <button className="chip chip-ghost" onClick={() => openRules(true)}>📖</button>
+        <button className="chip chip-ghost" title="How to play" onClick={() => openRules(true)}>📖</button>
+        <button
+          className="chip chip-ghost"
+          title={muted ? 'Unmute sounds' : 'Mute sounds'}
+          onClick={() => {
+            setMuted(!muted)
+            setMutedState(!muted)
+            if (muted) sfx.click()
+          }}
+        >
+          {muted ? '🔇' : '🔊'}
+        </button>
+        <button
+          className="chip chip-ghost"
+          title="Quit to main menu"
+          onClick={() => {
+            if (window.confirm('Quit to the main menu? The current war will be abandoned.')) backToMenu()
+          }}
+        >
+          ✕
+        </button>
       </div>
     </div>
   )
@@ -164,7 +217,10 @@ function ActionBar() {
           <button
             className="btn-action btn-fight"
             disabled={state.actionUsed}
-            onClick={() => state.startCombat(false)}
+            onClick={() => {
+              sfx.hit()
+              state.startCombat(false)
+            }}
           >
             ⚔ Fight
           </button>
@@ -173,20 +229,42 @@ function ActionBar() {
           <button
             className="btn-action btn-boss"
             disabled={state.actionUsed}
-            onClick={() => state.startCombat(true)}
+            onClick={() => {
+              sfx.boss()
+              state.startCombat(true)
+            }}
           >
             🐉 Challenge Vhalrax
           </button>
         )}
         {region.town && (
-          <button className="btn-action" onClick={() => state.openShop(true)}>
+          <button
+            className="btn-action"
+            onClick={() => {
+              sfx.click()
+              state.openShop(true)
+            }}
+          >
             🛒 Shop{mod.shopDiscount ? ' (sale!)' : ''}
           </button>
         )}
-        <button className="btn-action" disabled={state.actionUsed} onClick={state.rest}>
+        <button
+          className="btn-action"
+          disabled={state.actionUsed}
+          onClick={() => {
+            sfx.click()
+            state.rest()
+          }}
+        >
           ⛺ Rest
         </button>
-        <button className="btn-action btn-end" onClick={state.endTurn}>
+        <button
+          className="btn-action btn-end"
+          onClick={() => {
+            sfx.click()
+            state.endTurn()
+          }}
+        >
           ✅ End Turn
         </button>
       </div>
@@ -218,6 +296,21 @@ function Toasts() {
 export default function HUD() {
   const state = useGame()
   const player = selCurrentPlayer(state)
+  const openSheet = useGame((s) => s.openSheet)
+
+  // 'C' toggles the character sheet for the active player
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return // never hijack copy/devtools shortcuts
+      if (e.target.closest('input, textarea')) return
+      if (e.key.toLowerCase() === 'c' && player) {
+        openSheet(useGame.getState().sheetOpen == null ? player.idx : null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [player, openSheet])
+
   if (!player) return null
   return (
     <>
@@ -229,6 +322,7 @@ export default function HUD() {
         <QuestPanel player={player} />
         <LogPanel />
       </div>
+      <CamControls />
       <ActionBar />
       <Toasts />
     </>

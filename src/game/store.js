@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { TALENTS } from '../data/talents'
 import { GAME, FACTIONS } from '../data/constants'
 import { REGIONS } from '../data/regions'
 import { CREATURES, creaturesOfTier } from '../data/creatures'
@@ -46,6 +48,11 @@ const grantXp = (s, player, amount) => {
   for (const lvl of gained) {
     addLog(s, `${player.name} reaches level ${lvl}!`, 'good')
     addToast(s, `⬆ ${player.name} is now level ${lvl}!`, 'level')
+    if (lvl === 2 || lvl === 4) {
+      if (!player.pendingTalents) player.pendingTalents = []
+      player.pendingTalents.push(lvl)
+      addLog(s, `${player.name} may choose a new talent.`, 'good')
+    }
   }
 }
 
@@ -204,8 +211,11 @@ const buildTurnOrder = (players) => {
   return order
 }
 
+const noopStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} }
+
 export const useGame = create(
-  immer((set, get) => ({
+  persist(
+    immer((set, get) => ({
     screen: 'menu',
     players: [],
     turnOrder: [],
@@ -224,6 +234,7 @@ export const useGame = create(
     combat: null,
     shopOpen: false,
     rulesOpen: false,
+    sheetOpen: null,
     log: [],
     logSeq: 1,
     toasts: [],
@@ -267,6 +278,30 @@ export const useGame = create(
       set((s) => void (s.toasts = s.toasts.filter((t) => t.id !== id))),
     openShop: (open) => set((s) => void (s.shopOpen = open)),
     openRules: (open) => set((s) => void (s.rulesOpen = open)),
+    openSheet: (playerIdx) => set((s) => void (s.sheetOpen = playerIdx)),
+
+    chooseTalent: (talentId) =>
+      set((s) => {
+        const p = currentPlayer(s)
+        const t = TALENTS[talentId]
+        if (!t || !p.pendingTalents?.includes(t.level) || p.talents?.includes(talentId)) return
+        p.pendingTalents.splice(p.pendingTalents.indexOf(t.level), 1)
+        if (!p.talents) p.talents = []
+        p.talents.push(talentId)
+        const fx = t.effects
+        if (fx.maxHp) {
+          p.maxHp += fx.maxHp
+          p.hp += fx.maxHp
+        }
+        if (fx.maxEnergy) {
+          p.maxEnergy += fx.maxEnergy
+          p.energy += fx.maxEnergy
+        }
+        if (fx.armor) p.armor += fx.armor
+        if (fx.dice) p.dice += fx.dice
+        addLog(s, `${p.name} learns ${t.name} (${t.desc})`, 'good')
+        addToast(s, `✦ ${p.name} learns ${t.name}!`, 'level')
+      }),
 
     // ---------- movement ----------
     moveTo: (regionId) =>
@@ -526,7 +561,20 @@ export const useGame = create(
         p.energy = Math.min(effStats(p).maxEnergy, p.energy + GAME.ENERGY_REGEN_PER_TURN)
         advanceTurn(s)
       }),
-  }))
+    })),
+    {
+      name: 'warbound-realms-save',
+      version: 2,
+      storage: createJSONStorage(() =>
+        typeof window !== 'undefined' ? window.localStorage : noopStorage
+      ),
+      // transient UI state is not worth persisting across sessions
+      partialize: (s) => {
+        const { toasts, shopOpen, rulesOpen, sheetOpen, eventReveal, ...rest } = s
+        return rest
+      },
+    }
+  )
 )
 
 // ---------- read-only selectors ----------
