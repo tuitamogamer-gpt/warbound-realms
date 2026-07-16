@@ -73,7 +73,7 @@ export default function CombatModal() {
               <div className="dice-row">
                 <span className="dice-label">You:</span>
                 {combat.lastHeroRolls.map((v, i) => (
-                  <Die key={i} value={v} hitOn={4} crit delay={i * 70} />
+                  <Die key={`${combat.rollId}-${i}`} value={v} hitOn={4} crit delay={i * 70} />
                 ))}
                 {combat.lastAutoHits > 0 && <span className="auto-hits">+{combat.lastAutoHits} auto</span>}
               </div>
@@ -82,7 +82,7 @@ export default function CombatModal() {
               <div className="dice-row">
                 <span className="dice-label">Foe:</span>
                 {combat.lastCreatureRolls.map((v, i) => (
-                  <Die key={i} value={v} hitOn={def.hitOn} delay={i * 70} />
+                  <Die key={`${combat.rollId}-c${i}`} value={v} hitOn={def.hitOn} delay={i * 70} />
                 ))}
               </div>
             )}
@@ -112,6 +112,7 @@ export default function CombatModal() {
                   key={`${id}-${i}`}
                   className="chip"
                   title={ITEMS[id].desc}
+                  disabled={ITEMS[id].effects.heal && p.hp >= eff.maxHp}
                   onClick={() => useConsumable(i)}
                 >
                   <img className="chip-icon" src={itemArt(id)} alt="" /> {ITEMS[id].name}

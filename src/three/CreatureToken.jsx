@@ -3,7 +3,11 @@ import { useFrame } from '@react-three/fiber'
 import { Billboard, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
 import { REGIONS } from '../data/regions'
-import { CREATURES, creatureArt } from '../data/creatures'
+import { CREATURES, CREATURE_LIST, creatureArt } from '../data/creatures'
+
+// Preload every creature texture up front — otherwise the first appearance of a
+// new creature type mid-game (e.g. the boss at round 6) suspends the whole canvas.
+CREATURE_LIST.forEach((c) => useTexture.preload(creatureArt(c.id)))
 
 export default function CreatureToken({ regionId, slot, boss = false }) {
   const def = CREATURES[slot.defId]

@@ -27,6 +27,7 @@ const addLog = (s, text, cls = '') => {
 
 const addToast = (s, text, cls = '') => {
   s.toasts.push({ id: toastSeq++, text, cls })
+  if (s.toasts.length > 8) s.toasts.shift()
 }
 
 const currentPlayer = (s) => s.players[s.turnOrder[s.turnPos]]
@@ -50,8 +51,8 @@ const grantXp = (s, player, amount) => {
 
 const drawQuest = (s, player) => {
   if (!s.questDeck.length) {
-    const active = new Set(s.players.flatMap((p) => p.quests))
-    s.questDeck = shuffle(QUESTS.map((q) => q.id).filter((id) => !active.has(id)))
+    const used = new Set(s.players.flatMap((p) => [...p.quests, ...p.completed]))
+    s.questDeck = shuffle(QUESTS.map((q) => q.id).filter((id) => !used.has(id)))
   }
   const id = s.questDeck.pop()
   if (id) player.quests.push(id)
@@ -92,10 +93,21 @@ const checkKillQuests = (s, player, creatureDef, regionId) => {
 
 const heroDeath = (s, player) => {
   player.dead = true
+  s.movesLeft = 0
+  s.actionUsed = true
   const lost = Math.floor(player.gold * GAME.DEATH_GOLD_LOSS)
   player.gold -= lost
   addLog(s, `${player.name} has fallen! Loses ${lost} gold and retreats to the capital.`, 'bad')
   addToast(s, `☠ ${player.name} has fallen!`, 'death')
+}
+
+const advanceTurn = (s) => {
+  if (s.turnPos + 1 < s.turnOrder.length) {
+    s.turnPos += 1
+    beginTurn(s)
+  } else {
+    beginRound(s)
+  }
 }
 
 const beginTurn = (s) => {
@@ -261,6 +273,7 @@ export const useGame = create(
       set((s) => {
         if (s.combat || s.winner) return
         const p = currentPlayer(s)
+        if (p.dead) return
         const from = REGIONS[p.region]
         if (s.movesLeft <= 0) return
         if (!from.adjacent.includes(regionId)) return
@@ -316,6 +329,7 @@ export const useGame = create(
         if (!itemId) return
         const item = ITEMS[itemId]
         if (item.effects.heal) {
+          if (p.hp >= effStats(p).maxHp) return // don't waste a potion at full health
           p.consumables.splice(index, 1)
           p.hp = Math.min(effStats(p).maxHp, p.hp + item.effects.heal)
           addLog(s, `${p.name} drinks a ${item.name} (+${item.effects.heal} HP).`)
@@ -332,6 +346,7 @@ export const useGame = create(
         const p = currentPlayer(s)
         const hero = HEROES[p.heroId]
         if (hero.ability.id !== 'mend' || p.energy < hero.ability.cost || s.winner) return
+        if (p.hp >= effStats(p).maxHp) return
         p.energy -= hero.ability.cost
         p.hp = Math.min(effStats(p).maxHp, p.hp + 3)
         addLog(s, `${p.name} casts Blessed Mend (+3 HP).`)
@@ -387,6 +402,7 @@ export const useGame = create(
         const creatureDef = CREATURES[c.defId]
 
         let bonusDice = c.elixirDice
+        c.elixirDice = 0 // the elixir empowers exactly one roll
         let autoHits = 0
         let noRetaliation = false
         let noDamage = false
@@ -413,6 +429,7 @@ export const useGame = create(
         const heroDiceCount = eff.dice + (ev.heroDice || 0) + bonusDice
         const rolls = rollDice(heroDiceCount)
         const hits = heroHits(rolls) + autoHits
+        c.rollId = (c.rollId || 0) + 1
         c.lastHeroRolls = rolls
         c.lastAutoHits = autoHits
         c.hp = Math.max(0, c.hp - hits)
@@ -493,7 +510,12 @@ export const useGame = create(
     closeCombat: () =>
       set((s) => {
         s.combat = null
-        if (s.winner) s.screen = 'victory'
+        if (s.winner) {
+          s.screen = 'victory'
+          return
+        }
+        // a fallen hero's turn ends immediately
+        if (currentPlayer(s).dead) advanceTurn(s)
       }),
 
     // ---------- turn flow ----------
@@ -502,12 +524,7 @@ export const useGame = create(
         if (s.combat || s.winner) return
         const p = currentPlayer(s)
         p.energy = Math.min(effStats(p).maxEnergy, p.energy + GAME.ENERGY_REGEN_PER_TURN)
-        if (s.turnPos + 1 < s.turnOrder.length) {
-          s.turnPos += 1
-          beginTurn(s)
-        } else {
-          beginRound(s)
-        }
+        advanceTurn(s)
       }),
   }))
 )
@@ -520,7 +537,7 @@ export const selEventMod = (s) => EVENTS[s.eventId]?.mod || {}
 
 export const reachableRegions = (s) => {
   const p = selCurrentPlayer(s)
-  if (!p || s.movesLeft <= 0 || s.combat || s.winner) return []
+  if (!p || p.dead || s.movesLeft <= 0 || s.combat || s.winner) return []
   return REGIONS[p.region].adjacent.filter((rid) => {
     const dest = REGIONS[rid]
     if (dest.capital && dest.capital !== p.faction) return false

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Billboard, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
@@ -21,6 +21,12 @@ export default function HeroToken({ player, active }) {
   const faction = FACTIONS[player.faction]
   const slot = HERO_SLOTS[player.idx % HERO_SLOTS.length]
   const targetPos = useRef(new THREE.Vector3())
+  // mount position is frozen; useFrame owns all movement afterwards
+  const [initialPos] = useState(() => [
+    REGIONS[player.region].pos[0] + slot[0],
+    0.14,
+    REGIONS[player.region].pos[1] + slot[1],
+  ])
 
   useFrame(({ clock }, ) => {
     if (!group.current) return
@@ -34,7 +40,7 @@ export default function HeroToken({ player, active }) {
   })
 
   return (
-    <group ref={group} position={[REGIONS[player.region].pos[0] + slot[0], 0.14, REGIONS[player.region].pos[1] + slot[1]]}>
+    <group ref={group} position={initialPos}>
       {/* faction-colored base */}
       <mesh castShadow position={[0, 0.045, 0]}>
         <cylinderGeometry args={[0.26, 0.3, 0.09, 24]} />

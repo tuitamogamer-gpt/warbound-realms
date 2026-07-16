@@ -49,7 +49,7 @@ function HeroPanel({ player }) {
         {hero.ability.id === 'mend' && !inCombat && (
           <button
             className="chip"
-            disabled={player.energy < hero.ability.cost}
+            disabled={player.energy < hero.ability.cost || player.hp >= eff.maxHp}
             onClick={useMend}
           >
             Cast
@@ -67,7 +67,10 @@ function HeroPanel({ player }) {
               className="item-icon item-consumable"
               title={`${ITEMS[id].name} — ${ITEMS[id].desc} (click to use)`}
               onClick={() => useConsumable(i)}
-              disabled={ITEMS[id].effects.combatDice && !inCombat}
+              disabled={
+                (ITEMS[id].effects.combatDice && !inCombat) ||
+                (ITEMS[id].effects.heal && player.hp >= eff.maxHp)
+              }
             >
               <img src={itemArt(id)} alt={ITEMS[id].name} />
             </button>
@@ -197,7 +200,14 @@ function Toasts() {
   return (
     <div className="toasts">
       {toasts.slice(-4).map((t) => (
-        <div key={t.id} className={`toast toast-${t.cls}`} onClick={() => dismiss(t.id)}>
+        <div
+          key={t.id}
+          className={`toast toast-${t.cls}`}
+          onClick={() => dismiss(t.id)}
+          onAnimationEnd={(e) => {
+            if (e.animationName === 'toastOut') dismiss(t.id)
+          }}
+        >
           {t.text}
         </div>
       ))}

@@ -1,6 +1,8 @@
-import { Suspense } from 'react'
+import { Suspense, lazy } from 'react'
 import { useGame } from './game/store'
-import BoardScene from './three/BoardScene'
+
+// three.js + drei split into their own chunk so the menu paints immediately
+const BoardScene = lazy(() => import('./three/BoardScene'))
 import MainMenu from './ui/MainMenu'
 import HUD from './ui/HUD'
 import CombatModal from './ui/CombatModal'

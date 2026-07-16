@@ -16,7 +16,8 @@ export default function Rules({ onClose }) {
           <h3>Your turn</h3>
           <ul>
             <li><b>Move</b> up to your Movement value along connected regions (click a glowing region).</li>
-            <li>Take <b>one action</b>: <b>Fight</b> a creature in your region, <b>Shop</b> in a town, or <b>Rest</b> (+4 HP, +2 energy).</li>
+            <li>Take <b>one action</b>: <b>Fight</b> a creature in your region, or <b>Rest</b> (+4 HP, +2 energy).</li>
+            <li><b>Shopping</b> in a town is free — it does not use your action.</li>
             <li>You may keep moving after your action if you have movement left.</li>
             <li>You cannot enter the enemy capital. Blackspire is sealed until Vhalrax awakens.</li>
           </ul>
