@@ -11,7 +11,7 @@ export default function QuestCelebration() {
   const current = celebrations[0]
 
   useEffect(() => {
-    if (current && !combat) sfx.coin()
+    if (current && !combat) sfx.quest()
   }, [current?.questId, !!combat]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!current || combat) return null

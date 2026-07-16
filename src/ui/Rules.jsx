@@ -16,7 +16,7 @@ export default function Rules({ onClose }) {
           <h3>Your turn</h3>
           <ul>
             <li><b>Move</b> up to your Movement value along connected regions (click a glowing region).</li>
-            <li>Take <b>one action</b>: <b>Fight</b> a creature in your region, or <b>Rest</b> (+4 HP, +2 energy).</li>
+            <li>Take <b>one action</b>: <b>Fight</b> a creature in your region, <b>Duel</b> an enemy hero sharing it, or <b>Rest</b> (+4 HP, +2 energy).</li>
             <li><b>Shopping</b> in a town is free — it does not use your action.</li>
             <li>You may keep moving after your action if you have movement left.</li>
             <li>You cannot enter the enemy capital. Blackspire is sealed until Vhalrax awakens.</li>
@@ -39,6 +39,14 @@ export default function Rules({ onClose }) {
             <li>Gold also buys <b>items</b> in towns: one weapon, one armor, one trinket, plus up to 3 consumables.</li>
             <li>Press <b>C</b> (or click your portrait) to open the <b>character sheet</b> with equipment, spells and record.</li>
             <li>Slain creatures return to their region two rounds later.</li>
+          </ul>
+
+          <h3>Duels (PvP)</h3>
+          <ul>
+            <li>From <b>round 1</b>, sharing a region with an enemy hero lets you spend your action to <b>duel</b> them.</li>
+            <li>You attack with your full dice and abilities; they strike back with theirs. Armor blocks on both sides.</li>
+            <li>Win a duel: <b>+2 VP, +2 XP</b>, and you loot the gold the loser drops. The loser retreats to their capital.</li>
+            <li><b>Towns are sanctuaries</b> — no duels inside any town. You may withdraw between duel rounds.</li>
           </ul>
 
           <h3>Quests</h3>

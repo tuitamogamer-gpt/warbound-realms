@@ -225,6 +225,11 @@ function ActionBar() {
   const canFightBoss = player.region === 'blackspire' && state.bossSpawned && state.bossHp > 0
   const faction = FACTIONS[player.faction]
   const mod = selEventMod(state)
+  const enemiesHere = region.town
+    ? []
+    : state.players.filter(
+        (pl) => pl.faction !== player.faction && !pl.dead && pl.region === player.region
+      )
 
   return (
     <div className="actionbar">
@@ -256,6 +261,20 @@ function ActionBar() {
             🐉 Challenge Vhalrax
           </button>
         )}
+        {enemiesHere.map((t) => (
+          <button
+            key={t.idx}
+            className="btn-action btn-duel"
+            disabled={state.actionUsed}
+            title={`Duel ${t.name} — win for +2 VP, +2 XP and their dropped gold`}
+            onClick={() => {
+              sfx.pvp()
+              state.startPvp(t.idx)
+            }}
+          >
+            🗡 Duel {t.name.replace(/^Ser /, '').split(' ')[0]}
+          </button>
+        ))}
         {region.town && (
           <button
             className="btn-action"

@@ -72,6 +72,7 @@ export function makePlayer(idx, name, heroId) {
     pendingTalents: [],
     dead: false,
     kills: 0,
+    pvpWins: 0,
   }
 }
 

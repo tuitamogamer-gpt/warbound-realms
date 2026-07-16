@@ -9,6 +9,8 @@ export const GAME = {
   REST_ENERGY: 2,
   ENERGY_REGEN_PER_TURN: 1,
   DEATH_GOLD_LOSS: 0.5, // fraction of gold lost on death
+  PVP_VP: 2, // victory points for winning a duel
+  PVP_XP: 2, // experience for winning a duel
 }
 
 // cumulative XP needed to reach level 1..5

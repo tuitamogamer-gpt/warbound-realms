@@ -1,6 +1,6 @@
 # Warbound Realms — The Board Game
 
-A fully playable **3D digital fantasy adventure board game** for 2–4 players (hotseat), inspired by classic 2000s adventure board game mechanics. Built with React, react-three-fiber and zustand. All artwork was AI-generated (OpenArt / Nano Banana 2); the world, names and rules are original.
+A fully playable **3D digital fantasy adventure board game** for 2–4 players (hotseat), inspired by classic 2000s adventure board game mechanics. Built with React, react-three-fiber and zustand. All artwork was AI-generated (OpenArt / Nano Banana 2) and all sound effects were AI-generated (ElevenLabs sound-generation API); the world, names and rules are original.
 
 ## The game
 
@@ -12,6 +12,7 @@ Two factions — the **Radiant Accord** and the **Emberclaw Dominion** — race 
 - **Quest drafting** — draw two quest cards, keep one; every card shows its XP/gold/VP reward up front
 - **XP and levels (1–5)**, talents, gold, and an item shop (weapons, armor, trinkets, consumables)
 - **Round events** that reshape each round (blood moons, caravans, storms...)
+- **PvP duels from round 1** — share a region with an enemy hero and spend your action to duel them: win for VP, XP and their dropped gold (towns are sanctuaries)
 - **Talents** — at levels 2 and 4 every hero picks a permanent upgrade
 - **Character sheet** (press `C`) — equipment slots, satchel, abilities, talents, record
 - At round 6, **Vhalrax the Undying** awakens — slay him to win instantly, or out-score the enemy faction in victory points by the end of round 10

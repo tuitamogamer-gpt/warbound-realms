@@ -89,6 +89,7 @@ export default function CharacterSheet() {
               <span title="Victory points">🏆 {player.vp} VP</span>
               <span title="Gold">💰 {player.gold}</span>
               <span title="Creatures slain">⚔ {player.kills}</span>
+              <span title="Duels won">🗡 {player.pvpWins || 0}</span>
               <span title="Quests completed">📜 {player.completed.length}</span>
             </div>
             <p className="sheet-blurb">{hero.blurb}</p>

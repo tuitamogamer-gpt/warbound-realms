@@ -109,14 +109,19 @@ const checkKillQuests = (s, player, creatureDef, regionId) => {
   }
 }
 
+// Returns the gold the fallen hero dropped (a duel winner may loot it).
 const heroDeath = (s, player) => {
   player.dead = true
-  s.movesLeft = 0
-  s.actionUsed = true
+  // only end the turn if the fallen hero is the one currently playing
+  if (player.idx === s.turnOrder[s.turnPos]) {
+    s.movesLeft = 0
+    s.actionUsed = true
+  }
   const lost = Math.floor(player.gold * GAME.DEATH_GOLD_LOSS)
   player.gold -= lost
   addLog(s, `${player.name} has fallen! Loses ${lost} gold and retreats to the capital.`, 'bad')
   addToast(s, `☠ ${player.name} has fallen!`, 'death')
+  return lost
 }
 
 const advanceTurn = (s) => {
@@ -208,6 +213,109 @@ const beginRound = (s) => {
   }
   s.turnPos = 0
   beginTurn(s)
+}
+
+// One round of a hero-versus-hero duel. The attacker may use an ability;
+// the defender fights back with their full dice and passive bonuses.
+const pvpRound = (s, c, abilityId) => {
+  const p = s.players[c.playerIdx]
+  const t = s.players[c.targetIdx]
+  const eff = effStats(p)
+  const defEff = effStats(t)
+  const ev = eventMod(s)
+
+  let bonusDice = c.elixirDice
+  c.elixirDice = 0
+  let autoHits = 0
+  let noRetaliation = false
+  let noDamage = false
+  let critOn5 = false
+  if (c.round === 1) bonusDice += eff.firstRoundDice
+
+  const ab = abilityId ? ABILITIES[abilityId] : null
+  if (
+    ab &&
+    ab.type === 'active' &&
+    p.abilities.includes(ab.id) &&
+    p.energy >= ab.energy &&
+    !(ab.effect.heal && p.hp >= eff.maxHp)
+  ) {
+    p.energy -= ab.energy
+    const fx = ab.effect
+    if (fx.bonusDice) bonusDice += fx.bonusDice
+    if (fx.autoHits) autoHits += fx.autoHits
+    if (fx.noRetaliation) noRetaliation = true
+    if (fx.noDamage) noDamage = true
+    if (fx.critOn5) critOn5 = true
+    if (fx.heal) {
+      p.hp = Math.min(eff.maxHp, p.hp + fx.heal)
+      c.log.unshift({ text: `${ab.name}: +${fx.heal} HP`, cls: 'good' })
+    } else {
+      c.log.unshift({ text: `${ab.name}!`, cls: 'good' })
+    }
+  }
+  if (eff.firstStrike && c.round === 1) noRetaliation = true
+
+  // attacker strikes
+  const atkDice = eff.dice + (ev.heroDice || 0) + bonusDice
+  const rolls = rollDice(atkDice)
+  const hits = heroHits(rolls, critOn5) + autoHits
+  c.rollId = (c.rollId || 0) + 1
+  c.lastCritOn5 = critOn5
+  c.lastHeroRolls = rolls
+  c.lastAutoHits = autoHits
+  const dmgOut = Math.max(0, hits - defEff.armor)
+  t.hp = Math.max(0, t.hp - dmgOut)
+  c.log.unshift({
+    text: `${p.name} rolls ${atkDice} dice → ${dmgOut} damage${defEff.armor && hits ? ` (${hits} hits − ${defEff.armor} armor)` : ''}`,
+    cls: '',
+  })
+
+  if (t.hp <= 0) {
+    c.over = true
+    c.heroWon = true
+    c.lastCreatureRolls = null
+    const loot = heroDeath(s, t)
+    p.gold += loot
+    p.vp += GAME.PVP_VP
+    p.pvpWins = (p.pvpWins || 0) + 1
+    c.log.unshift({ text: `${t.name} is defeated! +${GAME.PVP_XP} XP, +${loot} gold, +${GAME.PVP_VP} VP`, cls: 'good' })
+    addLog(s, `🏆 ${p.name} wins the duel against ${t.name} (+${GAME.PVP_XP} XP, +${loot} gold, +${GAME.PVP_VP} VP)!`, 'good')
+    grantXp(s, p, GAME.PVP_XP)
+    return
+  }
+
+  // defender strikes back
+  if (!noRetaliation) {
+    const defDice = defEff.dice + (ev.heroDice || 0) + (c.round === 1 ? defEff.firstRoundDice : 0)
+    const dRolls = rollDice(defDice)
+    const dHits = heroHits(dRolls)
+    const dmgIn = noDamage ? 0 : Math.max(0, dHits - eff.armor)
+    c.lastCreatureRolls = dRolls
+    p.hp = Math.max(0, p.hp - dmgIn)
+    c.log.unshift({
+      text: noDamage
+        ? `${t.name} strikes — ${ab.name} absorbs everything!`
+        : `${t.name} rolls ${defDice} dice → ${dmgIn} damage${eff.armor && dHits ? ` (${dHits} hits − ${eff.armor} armor)` : ''}`,
+      cls: dmgIn > 0 ? 'bad' : '',
+    })
+    if (p.hp <= 0) {
+      c.over = true
+      c.heroDied = true
+      const loot = heroDeath(s, p)
+      t.gold += loot
+      t.vp += GAME.PVP_VP
+      t.pvpWins = (t.pvpWins || 0) + 1
+      c.log.unshift({ text: `${p.name} falls! ${t.name} claims +${GAME.PVP_XP} XP, +${loot} gold, +${GAME.PVP_VP} VP`, cls: 'bad' })
+      addLog(s, `🏆 ${t.name} wins the duel against ${p.name} (+${GAME.PVP_XP} XP, +${loot} gold, +${GAME.PVP_VP} VP)!`, 'good')
+      grantXp(s, t, GAME.PVP_XP)
+      return
+    }
+  } else {
+    c.lastCreatureRolls = null
+    c.log.unshift({ text: `${t.name} cannot strike back!`, cls: 'good' })
+  }
+  c.round += 1
 }
 
 // Interleave factions so turns alternate: A, D, A, D...
@@ -449,6 +557,37 @@ export const useGame = create(
 
 
     // ---------- combat ----------
+    startPvp: (targetIdx) =>
+      set((s) => {
+        if (s.combat || s.actionUsed || s.winner) return
+        const p = currentPlayer(s)
+        const t = s.players[targetIdx]
+        if (!t || t.dead || p.dead || t.idx === p.idx) return
+        if (t.faction === p.faction) return
+        if (t.region !== p.region) return
+        if (REGIONS[p.region].town) return // towns are sanctuaries
+        s.actionUsed = true
+        s.combat = {
+          pvp: true,
+          playerIdx: p.idx,
+          targetIdx,
+          regionId: p.region,
+          round: 1,
+          over: false,
+          heroWon: false,
+          heroDied: false,
+          fled: false,
+          elixirDice: 0,
+          lastHeroRolls: null,
+          lastCreatureRolls: null,
+          lastAutoHits: 0,
+          lastCritOn5: false,
+          rollId: 0,
+          log: [{ text: `${p.name} challenges ${t.name} to a duel!`, cls: 'event' }],
+        }
+        addLog(s, `⚔ ${p.name} challenges ${t.name} to a duel!`, 'bad')
+      }),
+
     startCombat: (boss = false) =>
       set((s) => {
         if (s.combat || s.actionUsed || s.winner) return
@@ -491,6 +630,10 @@ export const useGame = create(
       set((s) => {
         const c = s.combat
         if (!c || c.over) return
+        if (c.pvp) {
+          pvpRound(s, c, abilityId)
+          return
+        }
         const p = s.players[c.playerIdx]
         const eff = effStats(p)
         const ev = eventMod(s)
@@ -607,9 +750,13 @@ export const useGame = create(
         const c = s.combat
         if (!c || c.over) return
         const p = s.players[c.playerIdx]
-        const creatureDef = CREATURES[c.defId]
         c.over = true
         c.fled = true
+        if (c.pvp) {
+          addLog(s, `${p.name} withdraws from the duel with ${s.players[c.targetIdx].name}.`, 'bad')
+          return
+        }
+        const creatureDef = CREATURES[c.defId]
         if (c.boss) s.bossHp = c.hp
         else if (s.creatures[c.regionId]) s.creatures[c.regionId].hp = c.hp
         addLog(s, `${p.name} flees from ${creatureDef.name}.`, 'bad')

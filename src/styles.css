@@ -248,6 +248,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .btn-action:hover:not(:disabled) { border-color: var(--gold-dim); transform: translateY(-1px); }
 .btn-fight { border-color: #8f3b3b; }
 .btn-boss { border-color: #39ff6a; color: #9ae66e; }
+.btn-duel { border-color: #b0203f; color: #ff8ba0; }
 .btn-end { border-color: var(--gold-dim); }
 
 /* ---------- toasts ---------- */

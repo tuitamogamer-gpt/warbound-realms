@@ -47,7 +47,11 @@ export default function CombatModal() {
   if (!combat) return null
   const p = players[combat.playerIdx]
   const hero = HEROES[p.heroId]
-  const def = CREATURES[combat.defId]
+  const isPvp = !!combat.pvp
+  const defender = isPvp ? players[combat.targetIdx] : null
+  const def = isPvp ? null : CREATURES[combat.defId]
+  const defEff = isPvp ? effStats(defender) : null
+  const foeName = isPvp ? defender.name : def.name
   const eff = effStats(p)
   const activeAbilities = (p.abilities || [])
     .map((id) => ABILITIES[id])
@@ -73,13 +77,19 @@ export default function CombatModal() {
           </div>
           <div className="combat-vs">
             <div className="vs-text">⚔</div>
-            <div className="combat-round">Round {combat.round}</div>
+            <div className="combat-round">{isPvp ? 'Duel' : 'Round'} {combat.round}</div>
           </div>
           <div className="combatant">
-            <img src={creatureArt(combat.defId)} alt={def.name} className={combat.boss ? 'boss-img' : ''} />
-            <div className="combatant-name">{def.name}</div>
+            <img
+              src={isPvp ? heroArt(defender.heroId) : creatureArt(combat.defId)}
+              alt={foeName}
+              className={combat.boss ? 'boss-img' : ''}
+            />
+            <div className="combatant-name">{foeName}</div>
             <div className="combat-hp hp-creature">
-              ❤️ {combat.hp}/{combat.maxHp} · 🎲 {def.dice} (hits {def.hitOn}+)
+              {isPvp
+                ? <>❤️ {defender.hp}/{defEff.maxHp} · 🎲 {defEff.dice} (hits 4+) · 🛡 {defEff.armor}</>
+                : <>❤️ {combat.hp}/{combat.maxHp} · 🎲 {def.dice} (hits {def.hitOn}+)</>}
             </div>
           </div>
         </div>
@@ -99,7 +109,13 @@ export default function CombatModal() {
               <div className="dice-row">
                 <span className="dice-label">Foe:</span>
                 {combat.lastCreatureRolls.map((v, i) => (
-                  <Die key={`${combat.rollId}-c${i}`} value={v} hitOn={def.hitOn} delay={i * 70} />
+                  <Die
+                    key={`${combat.rollId}-c${i}`}
+                    value={v}
+                    hitOn={isPvp ? 4 : def.hitOn}
+                    critFrom={isPvp ? 6 : 99}
+                    delay={i * 70}
+                  />
                 ))}
               </div>
             )}
@@ -147,7 +163,7 @@ export default function CombatModal() {
             <div className="combat-buttons">
               <button className="btn-primary" onClick={roll}>🎲 Roll Attack</button>
               <button className="btn-secondary" onClick={combatFlee}>
-                🏃 Flee
+                {isPvp ? '🏳 Withdraw' : '🏃 Flee'}
               </button>
             </div>
           </>
@@ -155,10 +171,10 @@ export default function CombatModal() {
           <div className="combat-buttons">
             <div className={`combat-result ${combat.heroWon ? 'good' : 'bad'}`}>
               {combat.heroWon
-                ? `${def.name} is slain!`
+                ? isPvp ? `${foeName} is defeated!` : `${foeName} is slain!`
                 : combat.heroDied
                   ? `${p.name} has fallen...`
-                  : 'You fled the battle.'}
+                  : isPvp ? 'You withdrew from the duel.' : 'You fled the battle.'}
             </div>
             <button className="btn-primary" onClick={closeCombat}>Continue</button>
           </div>

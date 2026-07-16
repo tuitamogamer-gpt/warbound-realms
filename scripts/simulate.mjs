@@ -105,9 +105,17 @@ function playOneGame(gameIdx) {
     const creatureHere = s.creatures[p.region]
     const bossHere = p.region === 'blackspire' && s.bossSpawned && s.bossHp > 0
 
-    // action priority: fight boss > fight creature > shop sometimes > rest if hurt
+    // action priority: fight boss > duel sometimes > fight creature > shop > rest
     if (!s.actionUsed && bossHere && p.hp > 5) {
       s.startCombat(true)
+      continue
+    }
+    const enemyHere = s.players.find(
+      (pl) => pl.faction !== p.faction && !pl.dead && pl.region === p.region
+    )
+    if (!s.actionUsed && enemyHere && !region.town && p.hp > 4 && Math.random() < 0.7) {
+      s.startPvp(enemyHere.idx)
+      assert(useGame.getState().combat?.pvp, 'duel opened as pvp combat')
       continue
     }
     if (!s.actionUsed && creatureHere && p.hp > 4 && Math.random() < 0.8) {
@@ -151,6 +159,7 @@ function playOneGame(gameIdx) {
     rounds: Math.min(end.round, 10),
     winner: end.winner.faction ?? 'draw',
     reason: end.winner.slayer ? 'boss-kill' : 'victory-points',
+    duels: end.players.reduce((n, p) => n + (p.pvpWins || 0), 0),
     steps,
   }
 }
@@ -168,12 +177,15 @@ for (let i = 0; i < N; i++) {
 const byWinner = {}
 const byReason = {}
 let totalRounds = 0
+let totalDuels = 0
 for (const r of results) {
   byWinner[r.winner] = (byWinner[r.winner] || 0) + 1
   byReason[r.reason] = (byReason[r.reason] || 0) + 1
   totalRounds += r.rounds
+  totalDuels += r.duels
 }
 console.log(`\n${results.length}/${N} games completed cleanly`)
 console.log('winners:', byWinner)
 console.log('end condition:', byReason)
 console.log('avg rounds:', (totalRounds / results.length).toFixed(1))
+console.log('avg duel wins per game:', (totalDuels / results.length).toFixed(1))

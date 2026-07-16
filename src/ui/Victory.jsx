@@ -23,6 +23,7 @@ export default function Victory() {
               <span>🏆 {p.vp} VP</span>
               <span>💰 {p.gold}</span>
               <span>⚔ {p.kills} kills</span>
+              <span>🗡 {p.pvpWins || 0} duels</span>
               <span>📜 {p.completed.length} quests</span>
             </div>
           ))}
