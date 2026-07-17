@@ -2,7 +2,7 @@
 // but legal plays to validate the rules engine end to end.
 import { useGame, selCurrentPlayer, reachableRegions } from '../src/game/store.js'
 import { REGIONS } from '../src/data/regions.js'
-import { ITEM_LIST } from '../src/data/items.js'
+import { ITEM_LIST, ITEMS as ITEMS_LOOKUP } from '../src/data/items.js'
 import { talentsForLevel } from '../src/data/talents.js'
 import { ABILITIES, trainableForHero, maxAbilitySlots } from '../src/data/abilities.js'
 import { effStats } from '../src/game/rules.js'
@@ -46,6 +46,14 @@ function playOneGame(gameIdx) {
         if (p.hp <= 2 && Math.random() < 0.8) {
           s.combatFlee()
         } else {
+          // sometimes pop a combat consumable (firebomb / stoneskin / elixir)
+          if (Math.random() < 0.3) {
+            const ci = p.consumables.findIndex(
+              (id) => ITEM_LIST.find((it) => it.id === id)?.effects &&
+                (ITEMS_LOOKUP[id].effects.combatDice || ITEMS_LOOKUP[id].effects.combatAutoHits || ITEMS_LOOKUP[id].effects.combatArmor)
+            )
+            if (ci >= 0) s.useConsumable(ci)
+          }
           let abilityId = null
           if (Math.random() < 0.4) {
             const usable = p.abilities

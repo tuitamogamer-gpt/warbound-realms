@@ -17,6 +17,7 @@ export function effStats(player) {
     energyRegen: 0,
     killHeal: 0,
     firstRoundDice: 0,
+    critOn5: false,
   }
   for (const itemId of player.items) {
     const fx = ITEMS[itemId]?.effects || {}
@@ -27,11 +28,16 @@ export function effStats(player) {
     if (fx.energy) eff.maxEnergy += fx.energy
     if (fx.goldPerKill) eff.goldPerKill += fx.goldPerKill
     if (fx.firstStrike) eff.firstStrike = true
+    if (fx.energyRegen) eff.energyRegen += fx.energyRegen
+    if (fx.killHeal) eff.killHeal += fx.killHeal
+    if (fx.firstRoundDice) eff.firstRoundDice += fx.firstRoundDice
+    if (fx.critOn5) eff.critOn5 = true
   }
   for (const abilityId of player.abilities || []) {
     const ab = ABILITIES[abilityId]
     if (!ab || ab.type !== 'passive') continue
     const fx = ab.effect
+    if (fx.dice) eff.dice += fx.dice
     if (fx.armor) eff.armor += fx.armor
     if (fx.move) eff.move += fx.move
     if (fx.energy) eff.maxEnergy += fx.energy

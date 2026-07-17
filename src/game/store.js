@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { TALENTS } from '../data/talents'
-import { ABILITIES, maxAbilitySlots } from '../data/abilities'
+import { ABILITIES, maxAbilitySlots, isHealOnly } from '../data/abilities'
 import { GAME, FACTIONS } from '../data/constants'
 import { REGIONS } from '../data/regions'
 import { CREATURES, creaturesOfTier } from '../data/creatures'
@@ -225,11 +225,15 @@ const pvpRound = (s, c, abilityId) => {
   const ev = eventMod(s)
 
   let bonusDice = c.elixirDice
+  let autoHits = c.elixirAutoHits || 0
+  let bonusArmor = c.elixirArmor || 0
   c.elixirDice = 0
-  let autoHits = 0
+  c.elixirAutoHits = 0
+  c.elixirArmor = 0
   let noRetaliation = false
   let noDamage = false
-  let critOn5 = false
+  let critOn5 = eff.critOn5
+  let enemyDiceDown = 0
   if (c.round === 1) bonusDice += eff.firstRoundDice
 
   const ab = abilityId ? ABILITIES[abilityId] : null
@@ -238,7 +242,7 @@ const pvpRound = (s, c, abilityId) => {
     ab.type === 'active' &&
     p.abilities.includes(ab.id) &&
     p.energy >= ab.energy &&
-    !(ab.effect.heal && p.hp >= eff.maxHp)
+    !(isHealOnly(ab) && p.hp >= eff.maxHp)
   ) {
     p.energy -= ab.energy
     const fx = ab.effect
@@ -247,6 +251,7 @@ const pvpRound = (s, c, abilityId) => {
     if (fx.noRetaliation) noRetaliation = true
     if (fx.noDamage) noDamage = true
     if (fx.critOn5) critOn5 = true
+    if (fx.enemyDiceDown) enemyDiceDown += fx.enemyDiceDown
     if (fx.heal) {
       p.hp = Math.min(eff.maxHp, p.hp + fx.heal)
       c.log.unshift({ text: `${ab.name}: +${fx.heal} HP`, cls: 'good' })
@@ -287,16 +292,20 @@ const pvpRound = (s, c, abilityId) => {
 
   // defender strikes back
   if (!noRetaliation) {
-    const defDice = defEff.dice + (ev.heroDice || 0) + (c.round === 1 ? defEff.firstRoundDice : 0)
+    const defDice = Math.max(
+      0,
+      defEff.dice + (ev.heroDice || 0) + (c.round === 1 ? defEff.firstRoundDice : 0) - enemyDiceDown
+    )
     const dRolls = rollDice(defDice)
-    const dHits = heroHits(dRolls)
-    const dmgIn = noDamage ? 0 : Math.max(0, dHits - eff.armor)
+    const dHits = heroHits(dRolls, defEff.critOn5)
+    const armor = eff.armor + bonusArmor
+    const dmgIn = noDamage ? 0 : Math.max(0, dHits - armor)
     c.lastCreatureRolls = dRolls
     p.hp = Math.max(0, p.hp - dmgIn)
     c.log.unshift({
       text: noDamage
         ? `${t.name} strikes — ${ab.name} absorbs everything!`
-        : `${t.name} rolls ${defDice} dice → ${dmgIn} damage${eff.armor && dHits ? ` (${dHits} hits − ${eff.armor} armor)` : ''}`,
+        : `${t.name} rolls ${defDice} dice → ${dmgIn} damage${armor && dHits ? ` (${dHits} hits − ${armor} armor)` : ''}`,
       cls: dmgIn > 0 ? 'bad' : '',
     })
     if (p.hp <= 0) {
@@ -451,7 +460,7 @@ export const useGame = create(
         if (s.winner || s.combat || !ab || !ab.anytime) return
         if (!p.abilities.includes(abilityId) || p.energy < ab.energy) return
         const eff = effStats(p)
-        if (ab.effect.heal && p.hp >= eff.maxHp) return
+        if (isHealOnly(ab) && p.hp >= eff.maxHp) return
         p.energy -= ab.energy
         if (ab.effect.heal) {
           p.hp = Math.min(eff.maxHp, p.hp + ab.effect.heal)
@@ -552,6 +561,14 @@ export const useGame = create(
           p.consumables.splice(index, 1)
           s.combat.elixirDice += item.effects.combatDice
           s.combat.log.unshift({ text: `${item.name}: +${item.effects.combatDice} dice this round`, cls: 'good' })
+        } else if (item.effects.combatAutoHits && s.combat && !s.combat.over) {
+          p.consumables.splice(index, 1)
+          s.combat.elixirAutoHits = (s.combat.elixirAutoHits || 0) + item.effects.combatAutoHits
+          s.combat.log.unshift({ text: `${item.name}: +${item.effects.combatAutoHits} auto hits this round`, cls: 'good' })
+        } else if (item.effects.combatArmor && s.combat && !s.combat.over) {
+          p.consumables.splice(index, 1)
+          s.combat.elixirArmor = (s.combat.elixirArmor || 0) + item.effects.combatArmor
+          s.combat.log.unshift({ text: `${item.name}: +${item.effects.combatArmor} armor this round`, cls: 'good' })
         }
       }),
 
@@ -578,6 +595,8 @@ export const useGame = create(
           heroDied: false,
           fled: false,
           elixirDice: 0,
+          elixirAutoHits: 0,
+          elixirArmor: 0,
           lastHeroRolls: null,
           lastCreatureRolls: null,
           lastAutoHits: 0,
@@ -617,9 +636,13 @@ export const useGame = create(
           heroDied: false,
           fled: false,
           elixirDice: 0,
+          elixirAutoHits: 0,
+          elixirArmor: 0,
           lastHeroRolls: null,
           lastCreatureRolls: null,
           lastAutoHits: 0,
+          lastCritOn5: false,
+          rollId: 0,
           rolling: false,
           log: [{ text: `${p.name} challenges ${creatureDef.name}!`, cls: 'event' }],
         }
@@ -640,11 +663,15 @@ export const useGame = create(
         const creatureDef = CREATURES[c.defId]
 
         let bonusDice = c.elixirDice
-        c.elixirDice = 0 // the elixir empowers exactly one roll
-        let autoHits = 0
+        let autoHits = c.elixirAutoHits || 0 // consumables (Firebomb)
+        let bonusArmor = c.elixirArmor || 0 // consumables (Stoneskin Draught)
+        c.elixirDice = 0 // one-shot consumables empower exactly one roll
+        c.elixirAutoHits = 0
+        c.elixirArmor = 0
         let noRetaliation = false
         let noDamage = false
-        let critOn5 = false
+        let critOn5 = eff.critOn5 // passive from Frostbrand Sword
+        let enemyDiceDown = 0
 
         if (c.round === 1) bonusDice += eff.firstRoundDice
 
@@ -654,7 +681,7 @@ export const useGame = create(
           ab.type === 'active' &&
           p.abilities.includes(ab.id) &&
           p.energy >= ab.energy &&
-          !(ab.effect.heal && p.hp >= eff.maxHp) // don't waste a heal at full health
+          !(isHealOnly(ab) && p.hp >= eff.maxHp) // don't waste a heal at full health
         ) {
           p.energy -= ab.energy
           const fx = ab.effect
@@ -663,6 +690,7 @@ export const useGame = create(
           if (fx.noRetaliation) noRetaliation = true
           if (fx.noDamage) noDamage = true
           if (fx.critOn5) critOn5 = true
+          if (fx.enemyDiceDown) enemyDiceDown += fx.enemyDiceDown
           if (fx.heal) {
             p.hp = Math.min(eff.maxHp, p.hp + fx.heal)
             c.log.unshift({ text: `${ab.name}: +${fx.heal} HP`, cls: 'good' })
@@ -704,7 +732,7 @@ export const useGame = create(
           p.kills += 1
           if (eff.killHeal > 0 && p.hp < eff.maxHp) {
             p.hp = Math.min(eff.maxHp, p.hp + eff.killHeal)
-            c.log.unshift({ text: `Bloodthirst: +${eff.killHeal} HP`, cls: 'good' })
+            c.log.unshift({ text: `Life drain: +${eff.killHeal} HP`, cls: 'good' })
           }
           s.creatures[c.regionId] = null
           s.respawnQueue[c.regionId] = s.round + 2
@@ -717,16 +745,17 @@ export const useGame = create(
 
         // creature strikes back
         if (!noRetaliation) {
-          const cDice = creatureDef.dice + (ev.creatureDice || 0)
+          const cDice = Math.max(0, creatureDef.dice + (ev.creatureDice || 0) - enemyDiceDown)
           const cRolls = rollDice(cDice)
           const cHits = creatureHits(cRolls, creatureDef.hitOn)
-          const dmg = noDamage ? 0 : Math.max(0, cHits - eff.armor)
+          const armor = eff.armor + bonusArmor
+          const dmg = noDamage ? 0 : Math.max(0, cHits - armor)
           c.lastCreatureRolls = cRolls
           p.hp = Math.max(0, p.hp - dmg)
           c.log.unshift({
             text: noDamage
               ? `${creatureDef.name} strikes — ${ab.name} absorbs everything!`
-              : `${creatureDef.name} rolls ${cDice} dice → ${dmg} damage${eff.armor && cHits ? ` (${cHits} hits − ${eff.armor} armor)` : ''}`,
+              : `${creatureDef.name} rolls ${cDice} dice → ${dmg} damage${armor && cHits ? ` (${cHits} hits − ${armor} armor)` : ''}`,
             cls: dmg > 0 ? 'bad' : '',
           })
           if (p.hp <= 0) {

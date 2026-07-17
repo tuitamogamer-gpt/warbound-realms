@@ -55,7 +55,7 @@ function TrainerTab({ player, buyAbility }) {
     <>
       <div className="trainer-slots">
         Ability slots: <b>{player.abilities.length}/{slots}</b>
-        {slots < 3 && <span className="trainer-hint"> · next slot at level {player.level < 2 ? 2 : 4}</span>}
+        {slots < 4 && <span className="trainer-hint"> · next slot at level {player.level < 2 ? 2 : player.level < 4 ? 4 : 5}</span>}
         {free > 0 && <span className="trainer-free"> · {free} free</span>}
       </div>
       <div className="shop-grid">

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useGame, selCurrentPlayer } from '../game/store'
 import { HEROES, heroArt } from '../data/heroes'
-import { ITEMS, itemArt } from '../data/items'
+import { ITEMS, itemArt, isCombatOnlyConsumable } from '../data/items'
 import { TALENTS } from '../data/talents'
 import { ABILITIES, abilityArt, maxAbilitySlots } from '../data/abilities'
 import { QUESTS } from '../data/quests'
@@ -121,7 +121,7 @@ export default function CharacterSheet() {
                   title={`${ITEMS[id].name} — ${ITEMS[id].desc}${isCurrent ? ' (click to use)' : ''}`}
                   disabled={
                     !isCurrent ||
-                    (ITEMS[id].effects.combatDice && !inCombat) ||
+                    (isCombatOnlyConsumable(id) && !inCombat) ||
                     (ITEMS[id].effects.heal && player.hp >= eff.maxHp)
                   }
                   onClick={() => {
@@ -168,9 +168,9 @@ export default function CharacterSheet() {
                 </div>
               )
             )}
-            {maxAbilitySlots(player.level) < 3 && (
+            {maxAbilitySlots(player.level) < 4 && (
               <div className="sheet-hint">
-                Next ability slot unlocks at level {player.level < 2 ? 2 : 4}.
+                Next ability slot unlocks at level {player.level < 2 ? 2 : player.level < 4 ? 4 : 5}.
               </div>
             )}
 

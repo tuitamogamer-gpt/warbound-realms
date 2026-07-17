@@ -96,7 +96,77 @@ export const ITEMS = {
     effects: { combatDice: 2 },
     desc: 'Consume in combat: +2 attack dice this combat round.',
   },
+  frostbrand_sword: {
+    id: 'frostbrand_sword',
+    name: 'Frostbrand Sword',
+    slot: 'weapon',
+    cost: 9,
+    effects: { dice: 1, critOn5: true },
+    desc: '+1 attack die, and your 5s also count as critical hits.',
+  },
+  warhammer_of_dawn: {
+    id: 'warhammer_of_dawn',
+    name: 'Warhammer of Dawn',
+    slot: 'weapon',
+    cost: 10,
+    effects: { dice: 2, killHeal: 1 },
+    desc: '+2 attack dice, and heal 1 whenever you slay a creature.',
+  },
+  stormhide_cloak: {
+    id: 'stormhide_cloak',
+    name: 'Stormhide Cloak',
+    slot: 'armor',
+    cost: 6,
+    effects: { armor: 1, move: 1 },
+    desc: '+1 armor, +1 movement.',
+  },
+  wardstone_mail: {
+    id: 'wardstone_mail',
+    name: 'Wardstone Mail',
+    slot: 'armor',
+    cost: 12,
+    effects: { armor: 3 },
+    desc: '+3 armor.',
+  },
+  banner_of_war: {
+    id: 'banner_of_war',
+    name: 'Banner of War',
+    slot: 'trinket',
+    cost: 7,
+    effects: { firstRoundDice: 1 },
+    desc: '+1 attack die on the first round of every combat.',
+  },
+  talisman_of_echoes: {
+    id: 'talisman_of_echoes',
+    name: 'Talisman of Echoes',
+    slot: 'trinket',
+    cost: 7,
+    effects: { energy: 1, energyRegen: 1 },
+    desc: '+1 max energy, and +1 extra energy at the end of your turn.',
+  },
+  firebomb: {
+    id: 'firebomb',
+    name: 'Firebomb',
+    slot: 'consumable',
+    cost: 4,
+    effects: { combatAutoHits: 2 },
+    desc: 'Consume in combat: deal 2 automatic hits this combat round.',
+  },
+  stoneskin_draught: {
+    id: 'stoneskin_draught',
+    name: 'Stoneskin Draught',
+    slot: 'consumable',
+    cost: 3,
+    effects: { combatArmor: 2 },
+    desc: 'Consume in combat: +2 armor this combat round.',
+  },
 }
 
 export const ITEM_LIST = Object.values(ITEMS)
 export const itemArt = (id) => `/assets/items/${id}.jpg`
+
+// Consumables that only do something during combat (can't be used on the map).
+export const isCombatOnlyConsumable = (id) => {
+  const fx = ITEMS[id]?.effects || {}
+  return !!(fx.combatDice || fx.combatAutoHits || fx.combatArmor)
+}

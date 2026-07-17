@@ -27,6 +27,16 @@ export const ABILITIES = {
     name: 'Bloodthirst', desc: 'Heal 2 whenever you slay a creature.',
     effect: { killHeal: 2 },
   },
+  warcry: {
+    id: 'warcry', heroId: 'grosh', type: 'active', cost: 6, energy: 2,
+    name: 'War Cry', desc: 'The enemy rolls 2 fewer dice this combat round.',
+    effect: { enemyDiceDown: 2 },
+  },
+  iron_will: {
+    id: 'iron_will', heroId: 'grosh', type: 'passive', cost: 7,
+    name: 'Iron Will', desc: '+2 max health, +1 max energy.',
+    effect: { maxHp: 2, energy: 1 },
+  },
 
   // ---- Flame Sorceress (Zyra) ----
   fireball: {
@@ -48,6 +58,16 @@ export const ABILITIES = {
     id: 'pyroclasm', heroId: 'zyra', type: 'active', cost: 8, energy: 4,
     name: 'Pyroclasm', desc: 'Deal 5 automatic hits this combat round.',
     effect: { autoHits: 5 },
+  },
+  living_flame: {
+    id: 'living_flame', heroId: 'zyra', type: 'active', cost: 7, energy: 3,
+    name: 'Living Flame', desc: '+2 dice this round, and 5s also count as critical hits.',
+    effect: { bonusDice: 2, critOn5: true },
+  },
+  inner_fire: {
+    id: 'inner_fire', heroId: 'zyra', type: 'passive', cost: 7,
+    name: 'Inner Fire', desc: '+1 max energy; +1 attack die on the first round of every combat.',
+    effect: { energy: 1, firstRoundDice: 1 },
   },
 
   // ---- Shadowstalker (Morvek) ----
@@ -71,6 +91,16 @@ export const ABILITIES = {
     name: 'Opportunist', desc: '+1 attack die on the first round of every combat.',
     effect: { firstRoundDice: 1 },
   },
+  garrote: {
+    id: 'garrote', heroId: 'morvek', type: 'active', cost: 7, energy: 3,
+    name: 'Garrote', desc: 'Deal 3 automatic hits this combat round.',
+    effect: { autoHits: 3 },
+  },
+  uncanny_reflexes: {
+    id: 'uncanny_reflexes', heroId: 'morvek', type: 'passive', cost: 6,
+    name: 'Uncanny Reflexes', desc: '+1 armor.',
+    effect: { armor: 1 },
+  },
 
   // ---- Knight (Aldric) ----
   shield_wall: {
@@ -92,6 +122,16 @@ export const ABILITIES = {
     id: 'lay_on_hands', heroId: 'aldric', type: 'active', cost: 6, energy: 3, anytime: true,
     name: 'Lay on Hands', desc: 'Heal 4 health. Usable in and out of combat.',
     effect: { heal: 4 },
+  },
+  crusade: {
+    id: 'crusade', heroId: 'aldric', type: 'active', cost: 7, energy: 3,
+    name: 'Crusade', desc: '+2 attack dice and heal 2 this combat round.',
+    effect: { bonusDice: 2, heal: 2 },
+  },
+  standard_bearer: {
+    id: 'standard_bearer', heroId: 'aldric', type: 'passive', cost: 6,
+    name: 'Standard Bearer', desc: '+1 extra energy at the end of your turn.',
+    effect: { regen: 1 },
   },
 
   // ---- Arcanist (Elowen) ----
@@ -115,6 +155,16 @@ export const ABILITIES = {
     name: 'Starfire', desc: 'Deal 3 automatic hits this combat round.',
     effect: { autoHits: 3 },
   },
+  frost_nova: {
+    id: 'frost_nova', heroId: 'elowen', type: 'active', cost: 6, energy: 2,
+    name: 'Frost Nova', desc: 'The enemy rolls 2 fewer dice this combat round.',
+    effect: { enemyDiceDown: 2 },
+  },
+  archmage_focus: {
+    id: 'archmage_focus', heroId: 'elowen', type: 'passive', cost: 9,
+    name: 'Archmage Focus', desc: '+1 attack die.',
+    effect: { dice: 1 },
+  },
 
   // ---- Cleric (Torvald) ----
   mend: {
@@ -137,6 +187,16 @@ export const ABILITIES = {
     name: 'Devotion', desc: '+3 max health.',
     effect: { maxHp: 3 },
   },
+  radiance: {
+    id: 'radiance', heroId: 'torvald', type: 'active', cost: 7, energy: 3,
+    name: 'Radiance', desc: '2 automatic hits and heal 2 this combat round.',
+    effect: { autoHits: 2, heal: 2 },
+  },
+  benediction: {
+    id: 'benediction', heroId: 'torvald', type: 'passive', cost: 6,
+    name: 'Benediction', desc: '+1 extra energy at the end of your turn.',
+    effect: { regen: 1 },
+  },
 }
 
 export const ABILITY_LIST = Object.values(ABILITIES)
@@ -145,5 +205,13 @@ export const trainableForHero = (heroId) =>
   ABILITY_LIST.filter((a) => a.heroId === heroId && !a.signature)
 export const abilityArt = (id) => `/assets/abilities/${id}.jpg`
 
-// slot 1 = signature; slots 2 and 3 unlock at levels 2 and 4
-export const maxAbilitySlots = (level) => 1 + (level >= 2 ? 1 : 0) + (level >= 4 ? 1 : 0)
+// slot 1 = signature; slots 2, 3 and 4 unlock at levels 2, 4 and 5
+export const maxAbilitySlots = (level) =>
+  1 + (level >= 2 ? 1 : 0) + (level >= 4 ? 1 : 0) + (level >= 5 ? 1 : 0)
+
+// An ability whose ONLY effect is healing — pointless to cast at full health.
+// Mixed abilities (e.g. dice + heal) stay useful even at full HP.
+export const isHealOnly = (ab) => {
+  if (!ab?.effect?.heal) return false
+  return Object.keys(ab.effect).every((k) => k === 'heal')
+}

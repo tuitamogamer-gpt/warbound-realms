@@ -34,7 +34,7 @@ export default function Rules({ onClose }) {
           <h3>Growth</h3>
           <ul>
             <li>Kills and quests give <b>XP</b>. Levels (max 5) grant health, energy, dice and armor.</li>
-            <li>At <b>levels 2 and 4</b> you choose a <b>talent</b> — and unlock a new <b>ability slot</b>.</li>
+            <li>At <b>levels 2 and 4</b> you choose a <b>talent</b>; new <b>ability slots</b> open at levels 2, 4 and 5.</li>
             <li>Visit a town <b>Trainer</b> to buy class abilities with gold — attacks, wards and passives unique to your hero.</li>
             <li>Gold also buys <b>items</b> in towns: one weapon, one armor, one trinket, plus up to 3 consumables.</li>
             <li>Press <b>C</b> (or click your portrait) to open the <b>character sheet</b> with equipment, spells and record.</li>

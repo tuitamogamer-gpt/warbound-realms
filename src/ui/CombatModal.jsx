@@ -3,7 +3,7 @@ import { useGame } from '../game/store'
 import { CREATURES, creatureArt } from '../data/creatures'
 import { HEROES, heroArt } from '../data/heroes'
 import { ITEMS, itemArt } from '../data/items'
-import { ABILITIES, abilityArt } from '../data/abilities'
+import { ABILITIES, abilityArt, isHealOnly } from '../data/abilities'
 import { effStats } from '../game/rules'
 import { sfx } from '../game/sfx'
 
@@ -113,7 +113,7 @@ export default function CombatModal() {
                     key={`${combat.rollId}-c${i}`}
                     value={v}
                     hitOn={isPvp ? 4 : def.hitOn}
-                    critFrom={isPvp ? 6 : 99}
+                    critFrom={isPvp ? (defEff?.critOn5 ? 5 : 6) : 99}
                     delay={i * 70}
                   />
                 ))}
@@ -133,7 +133,7 @@ export default function CombatModal() {
             <div className="combat-options">
               {activeAbilities.map((ab) => {
                 const usable =
-                  p.energy >= ab.energy && !(ab.effect.heal && p.hp >= eff.maxHp)
+                  p.energy >= ab.energy && !(isHealOnly(ab) && p.hp >= eff.maxHp)
                 const on = selectedAbility === ab.id
                 return (
                   <button

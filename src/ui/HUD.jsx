@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useGame, selCurrentPlayer, selEventMod } from '../game/store'
 import { REGIONS } from '../data/regions'
 import { HEROES, heroArt } from '../data/heroes'
-import { ITEMS, itemArt } from '../data/items'
+import { ITEMS, itemArt, isCombatOnlyConsumable } from '../data/items'
 import { EVENTS, eventArt } from '../data/events'
 import { FACTIONS, GAME } from '../data/constants'
 import { effStats, xpForNextLevel } from '../game/rules'
@@ -118,7 +118,7 @@ function HeroPanel({ player }) {
               title={`${ITEMS[id].name} — ${ITEMS[id].desc} (click to use)`}
               onClick={() => useConsumable(i)}
               disabled={
-                (ITEMS[id].effects.combatDice && !inCombat) ||
+                (isCombatOnlyConsumable(id) && !inCombat) ||
                 (ITEMS[id].effects.heal && player.hp >= eff.maxHp)
               }
             >
