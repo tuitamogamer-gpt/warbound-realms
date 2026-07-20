@@ -201,4 +201,4 @@ export const REGIONS = {
 }
 
 export const REGION_LIST = Object.values(REGIONS)
-export const regionArt = (id) => `/assets/regions/${id}.jpg`
+export const regionArt = (id) => `/assets/regions/${id}.webp`

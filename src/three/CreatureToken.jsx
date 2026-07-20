@@ -3,15 +3,11 @@ import { useFrame } from '@react-three/fiber'
 import { Billboard, useTexture, Text, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { REGIONS } from '../data/regions'
-import { CREATURES, CREATURE_LIST, creatureArt } from '../data/creatures'
-
-// Preload every creature texture up front — otherwise the first appearance of a
-// new creature type mid-game (e.g. the boss at round 6) suspends the whole canvas.
-CREATURE_LIST.forEach((c) => useTexture.preload(creatureArt(c.id)))
+import { CREATURES, creatureArt } from '../data/creatures'
 
 const TIER_MARKS = { 1: '☠', 2: '☠☠', 3: '☠☠☠', 4: '☠☠☠☠' }
 
-export default function CreatureToken({ regionId, slot, boss = false }) {
+export default function CreatureToken({ regionId, slot, boss = false, reducedMotion = false }) {
   const def = CREATURES[slot.defId]
   const tex = useTexture(creatureArt(slot.defId))
   const group = useRef()
@@ -23,10 +19,10 @@ export default function CreatureToken({ regionId, slot, boss = false }) {
 
   useFrame(({ clock }) => {
     if (!group.current) return
-    if (boss) group.current.position.y = Math.sin(clock.elapsedTime * 1.6) * 0.06
+    if (boss) group.current.position.y = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 1.6) * 0.06
     const s = hovered ? 1.12 : 1
     const cur = group.current.scale.x
-    group.current.scale.setScalar(cur + (s - cur) * 0.2)
+    group.current.scale.setScalar(reducedMotion ? s : cur + (s - cur) * 0.2)
   })
 
   return (
@@ -88,6 +84,7 @@ export default function CreatureToken({ regionId, slot, boss = false }) {
               ❤️ {slot.hp}/{def.hp} · 🎲 {def.dice} dice, hits {def.hitOn}+
               {!boss && <> · rewards +{def.xp} XP, +{def.gold} 💰, +{def.vp} 🏆</>}
             </div>
+            {def.trait && <div className="tip3d-trait">◆ {def.trait.name}: {def.trait.desc}</div>}
           </div>
         </Html>
       )}

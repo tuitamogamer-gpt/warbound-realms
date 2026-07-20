@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useGame } from '../game/store'
 import { QUESTS, questArt } from '../data/quests'
 import { sfx } from '../game/sfx'
+import ModalShell from './ModalShell'
 
 // Fanfare shown when a quest is completed, before the next quest draw.
 export default function QuestCelebration() {
@@ -19,8 +20,7 @@ export default function QuestCelebration() {
   if (!q) return null
 
   return (
-    <div className="overlay" onClick={dismiss}>
-      <div className="modal quest-celebration" onClick={(e) => e.stopPropagation()}>
+    <ModalShell className="quest-celebration" ariaLabel={`Quest complete: ${q.name}`} onClose={dismiss} closeOnBackdrop>
         <div className="celebration-banner">Quest Complete!</div>
         <img className="celebration-art" src={questArt(q)} alt="" />
         <h2>{q.name}</h2>
@@ -31,7 +31,6 @@ export default function QuestCelebration() {
           <span>+{q.reward.vp} 🏆</span>
         </div>
         <button className="btn-primary" onClick={dismiss}>Claim Reward</button>
-      </div>
-    </div>
+    </ModalShell>
   )
 }

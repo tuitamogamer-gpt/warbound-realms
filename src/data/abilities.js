@@ -9,8 +9,8 @@ export const ABILITIES = {
   // ---- Berserker (Grosh) ----
   rage: {
     id: 'rage', heroId: 'grosh', signature: true, type: 'active', energy: 2,
-    name: 'Blood Rage', desc: '+3 attack dice this combat round.',
-    effect: { bonusDice: 3 },
+    name: 'Blood Rage', desc: '+2 attack dice this combat round.',
+    effect: { bonusDice: 2 },
   },
   whirlwind: {
     id: 'whirlwind', heroId: 'grosh', type: 'active', cost: 5, energy: 3,
@@ -137,8 +137,8 @@ export const ABILITIES = {
   // ---- Arcanist (Elowen) ----
   arcane_bolt: {
     id: 'arcane_bolt', heroId: 'elowen', signature: true, type: 'active', energy: 2,
-    name: 'Arcane Bolt', desc: 'Deal 2 automatic hits this combat round.',
-    effect: { autoHits: 2 },
+    name: 'Arcane Bolt', desc: 'Deal 3 automatic hits this combat round.',
+    effect: { autoHits: 3 },
   },
   mind_spring: {
     id: 'mind_spring', heroId: 'elowen', type: 'passive', cost: 5,
@@ -203,7 +203,7 @@ export const ABILITY_LIST = Object.values(ABILITIES)
 export const abilitiesForHero = (heroId) => ABILITY_LIST.filter((a) => a.heroId === heroId)
 export const trainableForHero = (heroId) =>
   ABILITY_LIST.filter((a) => a.heroId === heroId && !a.signature)
-export const abilityArt = (id) => `/assets/abilities/${id}.jpg`
+export const abilityArt = (id) => `/assets/abilities/${id}.webp`
 
 // slot 1 = signature; slots 2, 3 and 4 unlock at levels 2, 4 and 5
 export const maxAbilitySlots = (level) =>

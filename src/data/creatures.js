@@ -10,6 +10,12 @@ export const CREATURES = {
     xp: 2,
     gold: 2,
     vp: 1,
+    trait: {
+      id: 'pack_hunter',
+      name: 'Pack Hunter',
+      desc: '+1 attack die in the first combat round.',
+      firstRoundDice: 1,
+    },
     blurb: 'Bark-hided pack hunter of the deep woods.',
   },
   mire_creeper: {
@@ -22,6 +28,12 @@ export const CREATURES = {
     xp: 2,
     gold: 2,
     vp: 1,
+    trait: {
+      id: 'tangled_hide',
+      name: 'Tangled Hide',
+      desc: 'Reduces incoming hits by 1.',
+      armor: 1,
+    },
     blurb: 'A knot of vines, mud and hunger.',
   },
   bandit_marauder: {
@@ -34,6 +46,12 @@ export const CREATURES = {
     xp: 2,
     gold: 3,
     vp: 1,
+    trait: {
+      id: 'dirty_fighting',
+      name: 'Dirty Fighting',
+      desc: 'Ignores 1 point of hero armor.',
+      armorPierce: 1,
+    },
     blurb: 'Steals purses, lives, and occasionally boots.',
   },
   stone_golem: {
@@ -46,6 +64,12 @@ export const CREATURES = {
     xp: 4,
     gold: 4,
     vp: 2,
+    trait: {
+      id: 'stone_shell',
+      name: 'Stone Shell',
+      desc: 'Reduces incoming hits by 2.',
+      armor: 2,
+    },
     blurb: 'An old guardian that forgot everything except violence.',
   },
   harpy_matriarch: {
@@ -58,6 +82,12 @@ export const CREATURES = {
     xp: 4,
     gold: 4,
     vp: 2,
+    trait: {
+      id: 'shrieking_gale',
+      name: 'Shrieking Gale',
+      desc: 'Heroes roll 1 fewer die.',
+      heroDiceDown: 1,
+    },
     blurb: 'Queen of the cliff broods. Her scream peels paint and courage.',
   },
   gravebound_knight: {
@@ -70,6 +100,12 @@ export const CREATURES = {
     xp: 4,
     gold: 4,
     vp: 2,
+    trait: {
+      id: 'soul_rend',
+      name: 'Soul Rend',
+      desc: 'A damaging retaliation drains 1 energy.',
+      energyDrainOnHit: 1,
+    },
     blurb: 'Sworn to a king three centuries dead. Still on duty.',
   },
   frost_wyrm: {
@@ -79,9 +115,16 @@ export const CREATURES = {
     hp: 12,
     dice: 5,
     hitOn: 5,
-    xp: 7,
-    gold: 6,
-    vp: 4,
+    xp: 6,
+    gold: 5,
+    vp: 3,
+    trait: {
+      id: 'glacial_scales',
+      name: 'Glacial Scales',
+      desc: 'Reduces incoming hits by 1 and ignores 1 armor.',
+      armor: 1,
+      armorPierce: 1,
+    },
     blurb: 'Winter with teeth.',
   },
   infernal_colossus: {
@@ -91,9 +134,15 @@ export const CREATURES = {
     hp: 14,
     dice: 5,
     hitOn: 5,
-    xp: 7,
-    gold: 6,
-    vp: 4,
+    xp: 6,
+    gold: 5,
+    vp: 3,
+    trait: {
+      id: 'living_inferno',
+      name: 'Living Inferno',
+      desc: 'A successful retaliation always deals at least 1 damage.',
+      minimumDamage: 1,
+    },
     blurb: 'A walking volcano with opinions.',
   },
   void_shrike: {
@@ -103,9 +152,15 @@ export const CREATURES = {
     hp: 11,
     dice: 6,
     hitOn: 5,
-    xp: 7,
-    gold: 6,
-    vp: 4,
+    xp: 6,
+    gold: 5,
+    vp: 3,
+    trait: {
+      id: 'void_phase',
+      name: 'Void Phase',
+      desc: 'The first automatic hit each round is negated.',
+      autoHitWard: 1,
+    },
     blurb: 'A hole in the sky, shaped like a bird, hungry like a god.',
   },
   vhalrax: {
@@ -119,10 +174,19 @@ export const CREATURES = {
     xp: 0,
     gold: 0,
     vp: 0,
+    trait: {
+      id: 'undying_wrath',
+      name: 'Undying Wrath',
+      desc: 'Ignores 3 armor and deals at least 1 damage on a successful retaliation.',
+      armorPierce: 3,
+      minimumDamage: 1,
+      enrageBelow: 0.5,
+      enrageDice: 2,
+    },
     blurb: 'The dragon-lich tyrant of Blackspire. Slay him and win the war.',
   },
 }
 
 export const CREATURE_LIST = Object.values(CREATURES)
 export const creaturesOfTier = (tier) => CREATURE_LIST.filter((c) => c.tier === tier)
-export const creatureArt = (id) => `/assets/creatures/${id}.jpg`
+export const creatureArt = (id) => `/assets/creatures/${id}.webp`

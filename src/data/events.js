@@ -49,7 +49,58 @@ export const EVENTS = {
     desc: 'Every hero immediately suffers 1 damage (cannot drop below 1 health).',
     instant: { damageAll: 1 },
   },
+  crossroads_ultimatum: {
+    id: 'crossroads_ultimatum',
+    art: 'storm_winds',
+    name: 'Crossroads Ultimatum',
+    desc: 'The first hero must choose whether to shelter or press the march.',
+    choices: [
+      {
+        id: 'shelter',
+        name: 'Shelter the Company',
+        desc: 'Recover 3 health.',
+        effect: { healCurrent: 3 },
+      },
+      {
+        id: 'press_on',
+        name: 'Press On',
+        desc: 'Suffer 1 damage and gain +1 movement this turn.',
+        effect: { damageCurrent: 1, movesCurrent: 1 },
+      },
+    ],
+  },
+  shattered_relic: {
+    id: 'shattered_relic',
+    art: 'fell_omen',
+    name: 'The Shattered Relic',
+    desc: 'A dangerous relic offers immediate power at a price.',
+    choices: [
+      {
+        id: 'sell_shards',
+        name: 'Sell the Shards',
+        desc: 'Gain 3 gold and suffer 2 damage.',
+        effect: { goldCurrent: 3, damageCurrent: 2 },
+      },
+      {
+        id: 'study_runes',
+        name: 'Study the Runes',
+        desc: 'Gain 2 experience.',
+        effect: { xpCurrent: 2 },
+      },
+    ],
+  },
+  leyline_surge: {
+    id: 'leyline_surge',
+    art: 'heroic_inspiration',
+    name: 'Leyline Surge',
+    desc: 'The first hero to reach the Ruins of Eldara claims 2 victory points.',
+    objective: {
+      region: 'ruins_eldara',
+      text: 'Reach the Ruins of Eldara first.',
+      reward: { vp: 2 },
+    },
+  },
 }
 
 export const EVENT_LIST = Object.values(EVENTS)
-export const eventArt = (id) => `/assets/events/${id}.jpg`
+export const eventArt = (id) => `/assets/events/${EVENTS[id]?.art || id}.webp`

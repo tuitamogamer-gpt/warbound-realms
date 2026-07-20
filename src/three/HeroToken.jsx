@@ -4,11 +4,8 @@ import { Billboard, useTexture, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { REGIONS } from '../data/regions'
 import { FACTIONS } from '../data/constants'
-import { HERO_LIST, heroArt } from '../data/heroes'
+import { heroArt } from '../data/heroes'
 import { effStats } from '../game/rules'
-
-// Preload hero art so tokens never suspend the canvas mid-game.
-HERO_LIST.forEach((h) => useTexture.preload(heroArt(h.id)))
 
 // Heroes stand on the west half of a tile, creatures on the east,
 // so multiple tokens on one region never overlap.
@@ -19,7 +16,7 @@ const HERO_SLOTS = [
   [-0.6, -0.85],
 ]
 
-export default function HeroToken({ player, active }) {
+export default function HeroToken({ player, active, reducedMotion = false }) {
   const group = useRef()
   const tex = useTexture(heroArt(player.heroId))
   const faction = FACTIONS[player.faction]
@@ -38,9 +35,12 @@ export default function HeroToken({ player, active }) {
     const pos = REGIONS[player.region].pos
     targetPos.current.set(pos[0] + slot[0], 0.14, pos[1] + slot[1])
     // glide between tiles instead of teleporting
-    group.current.position.lerp(targetPos.current, 0.09)
-    if (active) {
+    if (reducedMotion) group.current.position.copy(targetPos.current)
+    else group.current.position.lerp(targetPos.current, 0.09)
+    if (active && !reducedMotion) {
       group.current.position.y = 0.14 + Math.abs(Math.sin(clock.elapsedTime * 2.4)) * 0.12
+    } else {
+      group.current.position.y = 0.14
     }
   })
 

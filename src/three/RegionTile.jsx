@@ -26,7 +26,17 @@ const subLabel = (region) => {
   return `${TIER_LABELS[region.tier]} hunting grounds`
 }
 
-export default function RegionTile({ region, reachable, locked, creatureSlot, onClick }) {
+export default function RegionTile({
+  region,
+  reachable,
+  current,
+  selected,
+  questTarget,
+  reducedMotion,
+  locked,
+  creatureSlot,
+  onClick,
+}) {
   const tex = useTexture(regionArt(region.id))
   const ringRef = useRef()
   const dangerRef = useRef()
@@ -41,11 +51,17 @@ export default function RegionTile({ region, reachable, locked, creatureSlot, on
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
     if (ringRef.current) {
-      ringRef.current.material.opacity = reachable ? 0.55 + Math.sin(t * 4) * 0.3 : 0
-      ringRef.current.scale.setScalar(reachable ? 1 + Math.sin(t * 4) * 0.02 : 1)
+      ringRef.current.material.opacity = reachable
+        ? reducedMotion ? 0.75 : 0.55 + Math.sin(t * 4) * 0.3
+        : 0
+      ringRef.current.scale.setScalar(
+        reachable && !reducedMotion ? 1 + Math.sin(t * 4) * 0.02 : 1,
+      )
     }
     if (dangerRef.current) {
-      dangerRef.current.material.opacity = creatureDef && !locked ? 0.32 + Math.sin(t * 2.4) * 0.15 : 0
+      dangerRef.current.material.opacity = creatureDef && !locked
+        ? reducedMotion ? 0.42 : 0.32 + Math.sin(t * 2.4) * 0.15
+        : 0
     }
   })
 
@@ -87,17 +103,50 @@ export default function RegionTile({ region, reachable, locked, creatureSlot, on
         <meshStandardMaterial attach="material-2" color="#1a140c" />
       </mesh>
 
-      {/* movement highlight ring */}
+      {/* Current, reachable and inspected states remain distinct without relying on hover. */}
+      {current && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.162, 0]}>
+          <ringGeometry args={[r * 0.96, r * 1.035, 48]} />
+          <meshBasicMaterial color="#4da3ff" transparent opacity={0.98} />
+        </mesh>
+      )}
       <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.16, 0]}>
-        <ringGeometry args={[r * 1.02, r * 1.16, 48]} />
+        <ringGeometry args={[r * 1.04, r * 1.13, 48]} />
         <meshBasicMaterial color="#ffd75e" transparent opacity={0} />
       </mesh>
+      {selected && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.164, 0]}>
+          <ringGeometry args={[r * 1.135, r * 1.205, 48]} />
+          <meshBasicMaterial color="#f8e8bb" transparent opacity={0.95} />
+        </mesh>
+      )}
 
       {/* danger ring when a creature lurks here */}
       <mesh ref={dangerRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.155, 0]}>
-        <ringGeometry args={[r * 1.18, r * 1.26, 48]} />
+        <ringGeometry args={[r * 1.225, r * 1.29, 48]} />
         <meshBasicMaterial color="#e04747" transparent opacity={0} />
       </mesh>
+
+      {questTarget && (
+        <group position={[r * 0.76, 0.5, -r * 0.72]}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.27, 24]} />
+            <meshBasicMaterial color="#20160a" transparent opacity={0.95} />
+          </mesh>
+          <Text
+            position={[0, 0.014, 0]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            fontSize={0.34}
+            color="#ffd75e"
+            outlineWidth={0.02}
+            outlineColor="#000000"
+            anchorX="center"
+            anchorY="middle"
+          >
+            !
+          </Text>
+        </group>
+      )}
 
       {locked && (
         <Text position={[0, 0.35, 0]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.55} color="#9ae66e" outlineWidth={0.02} outlineColor="#000000">
@@ -143,6 +192,7 @@ export default function RegionTile({ region, reachable, locked, creatureSlot, on
               <div className="tip3d-creature">
                 ⚔ {creatureDef.name} — ❤️ {creatureSlot.hp}/{creatureDef.hp} · 🎲 {creatureDef.dice} dice (hits {creatureDef.hitOn}+)
                 {!creatureDef.boss && ` · +${creatureDef.xp} XP · +${creatureDef.gold} gold · +${creatureDef.vp} VP`}
+                {creatureDef.trait && <div>◆ {creatureDef.trait.name}: {creatureDef.trait.desc}</div>}
               </div>
             )}
             {locked && <div className="tip3d-locked">Sealed until Vhalrax awakens (round 6)</div>}

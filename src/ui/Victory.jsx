@@ -9,7 +9,7 @@ export default function Victory() {
   const faction = winner.faction ? FACTIONS[winner.faction] : null
 
   return (
-    <div className="menu victory" style={{ backgroundImage: 'url(/assets/ui/title.jpg)' }}>
+    <div className="menu victory" style={{ backgroundImage: 'url(/assets/ui/title.webp)' }}>
       <div className="menu-scrim">
         <h1 className="menu-title" style={faction ? { color: faction.color } : {}}>
           {faction ? `${faction.name} Victorious!` : 'Stalemate'}

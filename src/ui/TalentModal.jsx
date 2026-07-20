@@ -2,6 +2,7 @@ import { useGame, selCurrentPlayer } from '../game/store'
 import { talentsForLevel } from '../data/talents'
 import { HEROES, heroArt } from '../data/heroes'
 import { sfx } from '../game/sfx'
+import ModalShell from './ModalShell'
 
 // Shown to the active player whenever they have an unspent talent choice.
 export default function TalentModal() {
@@ -19,12 +20,11 @@ export default function TalentModal() {
   if (!pending.length) return null
 
   const level = pending[0]
-  const options = talentsForLevel(level)
+  const options = talentsForLevel(level, player.heroId)
   const hero = HEROES[player.heroId]
 
   return (
-    <div className="overlay overlay-dark">
-      <div className="modal talent-modal">
+    <ModalShell className="talent-modal" overlayClassName="overlay-dark" ariaLabel={`Choose a level ${level} talent`}>
         <img className="talent-portrait" src={heroArt(player.heroId)} alt={hero.name} />
         <h2>Level {level} Talent</h2>
         <p className="talent-sub">{player.name}, choose how your legend grows:</p>
@@ -44,7 +44,6 @@ export default function TalentModal() {
             </button>
           ))}
         </div>
-      </div>
-    </div>
+    </ModalShell>
   )
 }

@@ -1,199 +1,416 @@
-// Headless full-game simulation: drives the real zustand store through random
-// but legal plays to validate the rules engine end to end.
-import { useGame, selCurrentPlayer, reachableRegions } from '../src/game/store.js'
+// Seeded headless balance simulation. It drives the production Zustand store
+// through legal 2-player and 4-player games so a failing run can be reproduced.
+import { ABILITIES, maxAbilitySlots, trainableForHero } from '../src/data/abilities.js'
+import { GAME } from '../src/data/constants.js'
+import { ITEM_LIST, ITEMS } from '../src/data/items.js'
+import { QUESTS } from '../src/data/quests.js'
 import { REGIONS } from '../src/data/regions.js'
-import { ITEM_LIST, ITEMS as ITEMS_LOOKUP } from '../src/data/items.js'
 import { talentsForLevel } from '../src/data/talents.js'
-import { ABILITIES, trainableForHero, maxAbilitySlots } from '../src/data/abilities.js'
 import { effStats } from '../src/game/rules.js'
+import { reachableRegions, selCurrentPlayer, useGame } from '../src/game/store.js'
 
-const rnd = (arr) => arr[Math.floor(Math.random() * arr.length)]
+const HEROES_BY_FACTION = {
+  accord: ['aldric', 'elowen', 'torvald'],
+  dominion: ['grosh', 'zyra', 'morvek'],
+}
 
-function assert(cond, msg, ctx) {
-  if (!cond) {
-    console.error('ASSERTION FAILED:', msg, ctx ?? '')
-    process.exitCode = 1
-    throw new Error(msg)
+const DEFAULT_GAMES = 100
+const DEFAULT_SEED = 'warbound-balance-v1'
+const MAX_STEPS = 10_000
+
+function parseArgs(argv) {
+  const valueAfter = (flag, fallback) => {
+    const index = argv.indexOf(flag)
+    return index >= 0 ? argv[index + 1] : fallback
+  }
+  if (argv.includes('--help')) {
+    console.log('Usage: npm run simulate -- [--seed text] [--games count] [--setup 2p|4p|both]')
+    process.exit(0)
+  }
+  const games = Number.parseInt(valueAfter('--games', String(DEFAULT_GAMES)), 10)
+  const setup = valueAfter('--setup', 'both')
+  const seed = valueAfter('--seed', DEFAULT_SEED)
+  if (!Number.isInteger(games) || games < 1) throw new Error('--games must be a positive integer')
+  if (!['2p', '4p', 'both'].includes(setup)) throw new Error('--setup must be 2p, 4p, or both')
+  return { games, seed, setup }
+}
+
+function hashSeed(value) {
+  let hash = 2166136261
+  for (const char of String(value)) {
+    hash ^= char.charCodeAt(0)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function mulberry32(seed) {
+  let state = seed >>> 0
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0
+    let value = state
+    value = Math.imul(value ^ (value >>> 15), value | 1)
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296
   }
 }
 
-function playOneGame(gameIdx) {
-  const store = useGame
-  const api = store.getState()
-  api.startGame([
-    { name: 'Alpha', heroId: rnd(['aldric', 'elowen', 'torvald']) },
-    { name: 'Bravo', heroId: rnd(['grosh', 'zyra', 'morvek']) },
-  ])
+const rnd = (values, rng) => values[Math.floor(rng() * values.length)]
 
-  let steps = 0
-  const MAX_STEPS = 5000
+function shuffled(values, rng) {
+  const result = [...values]
+  for (let index = result.length - 1; index > 0; index--) {
+    const swapWith = Math.floor(rng() * (index + 1))
+    ;[result[index], result[swapWith]] = [result[swapWith], result[index]]
+  }
+  return result
+}
 
-  while (store.getState().screen === 'game' && steps < MAX_STEPS) {
-    steps++
-    const s = store.getState()
+function assert(condition, message, context) {
+  if (condition) return
+  const details = context ? ` ${JSON.stringify(context)}` : ''
+  throw new Error(`${message}${details}`)
+}
 
-    if (s.eventReveal) {
-      s.dismissEventReveal()
-      continue
+function makeRoster(playerCount, rng) {
+  const perFaction = playerCount / 2
+  const accord = shuffled(HEROES_BY_FACTION.accord, rng).slice(0, perFaction)
+  const dominion = shuffled(HEROES_BY_FACTION.dominion, rng).slice(0, perFaction)
+  const roster = []
+  for (let index = 0; index < perFaction; index++) {
+    roster.push({ name: `Accord ${index + 1}`, heroId: accord[index] })
+    roster.push({ name: `Dominion ${index + 1}`, heroId: dominion[index] })
+  }
+  return roster
+}
+
+function shortestStep(state, player, targetRegion) {
+  if (!targetRegion || player.region === targetRegion) return null
+  const queue = [player.region]
+  const previous = new Map([[player.region, null]])
+  while (queue.length) {
+    const regionId = queue.shift()
+    if (regionId === targetRegion) break
+    for (const next of REGIONS[regionId].adjacent) {
+      const destination = REGIONS[next]
+      if (previous.has(next)) continue
+      if (destination.capital && destination.capital !== player.faction) continue
+      if (next === 'blackspire' && !state.bossSpawned) continue
+      previous.set(next, regionId)
+      queue.push(next)
     }
+  }
+  if (!previous.has(targetRegion)) return null
+  let step = targetRegion
+  while (previous.get(step) !== player.region) step = previous.get(step)
+  return step
+}
 
-    if (s.combat) {
-      if (s.combat.over) {
-        s.closeCombat()
-      } else {
-        const p = s.players[s.combat.playerIdx]
-        // flee if badly wounded, otherwise attack (sometimes with an ability)
-        if (p.hp <= 2 && Math.random() < 0.8) {
-          s.combatFlee()
-        } else {
-          // sometimes pop a combat consumable (firebomb / stoneskin / elixir)
-          if (Math.random() < 0.3) {
-            const ci = p.consumables.findIndex(
-              (id) => ITEM_LIST.find((it) => it.id === id)?.effects &&
-                (ITEMS_LOOKUP[id].effects.combatDice || ITEMS_LOOKUP[id].effects.combatAutoHits || ITEMS_LOOKUP[id].effects.combatArmor)
-            )
-            if (ci >= 0) s.useConsumable(ci)
-          }
-          let abilityId = null
-          if (Math.random() < 0.4) {
-            const usable = p.abilities
-              .map((id) => ABILITIES[id])
-              .filter((ab) => ab.type === 'active' && p.energy >= ab.energy)
-            if (usable.length) abilityId = rnd(usable).id
-          }
-          s.combatRound(abilityId)
-        }
-      }
-      continue
+function questTarget(state, player) {
+  for (const questId of player.quests) {
+    const quest = QUESTS.find((candidate) => candidate.id === questId)
+    if (!quest) continue
+    if (quest.type === 'visit' || quest.region) return quest.region
+    if (quest.type === 'killCreature') {
+      const entry = Object.entries(state.creatures).find(([, slot]) => slot?.defId === quest.creature)
+      if (entry) return entry[0]
     }
+  }
+  return null
+}
 
-    if (s.celebrations.length) {
-      s.dismissCelebration()
-      continue
-    }
+function movementTarget(state, player, rng) {
+  if (state.bossSpawned && state.bossHp > 0 && player.hp >= 6 && rng() < 0.55) {
+    return 'blackspire'
+  }
+  const quest = questTarget(state, player)
+  if (quest && rng() < 0.65) return quest
+  const enemies = state.players.filter((candidate) => candidate.faction !== player.faction && !candidate.dead)
+  if (enemies.length && rng() < 0.35) return rnd(enemies, rng).region
+  return null
+}
 
-    if (s.questDraw) {
-      const idx = s.questDraw.playerIdx
-      const before = s.players[idx].quests.length
-      const celebBefore = s.celebrations.length
-      s.pickQuest(rnd(s.questDraw.options))
-      const ns = useGame.getState()
-      const after = ns.players[idx].quests.length
-      // a visit quest for the region you're standing in completes instantly
-      const instantComplete = after === before && ns.celebrations.length > celebBefore
-      assert(after === before + 1 || instantComplete, 'quest pick adds one quest (or completes instantly)', { before, after })
-      continue
-    }
+function affordableItems(state, player) {
+  return ITEM_LIST.filter((item) => {
+    if (item.cost > player.gold) return false
+    if (item.slot === 'consumable') return player.consumables.length < GAME.MAX_CONSUMABLES
+    return !player.items.includes(item.id)
+  })
+}
 
-    const p = selCurrentPlayer(s)
-    assert(p, 'current player exists')
+function validatePlayer(player) {
+  const effective = effStats(player)
+  assert(player.hp >= 0 && player.hp <= effective.maxHp, 'hp outside bounds', {
+    player: player.idx,
+    hp: player.hp,
+    maxHp: effective.maxHp,
+  })
+  assert(player.energy >= 0 && player.energy <= effective.maxEnergy, 'energy outside bounds', {
+    player: player.idx,
+    energy: player.energy,
+    maxEnergy: effective.maxEnergy,
+  })
+  assert(player.level >= 1 && player.level <= 5, 'level outside bounds', {
+    player: player.idx,
+    level: player.level,
+  })
+  assert(player.quests.length <= GAME.MAX_ACTIVE_QUESTS, 'too many active quests', {
+    player: player.idx,
+    quests: player.quests,
+  })
+  assert(player.abilities.length <= maxAbilitySlots(player.level), 'too many abilities', {
+    player: player.idx,
+    abilities: player.abilities,
+    level: player.level,
+  })
+  assert(REGIONS[player.region], 'player occupies an unknown region', {
+    player: player.idx,
+    region: player.region,
+  })
+}
 
-    // spend pending talent choices like a player would
-    if (p.pendingTalents?.length) {
-      const before = p.pendingTalents.length
-      s.chooseTalent(rnd(talentsForLevel(p.pendingTalents[0])).id)
-      const after = selCurrentPlayer(useGame.getState()).pendingTalents.length
-      assert(after === before - 1, 'talent choice consumed exactly one pending slot', { before, after })
-      continue
-    }
+function playOneGame({ gameIndex, playerCount, runSeed }) {
+    const botRng = mulberry32(hashSeed(`${runSeed}:bot`))
+    const roster = makeRoster(playerCount, botRng)
+    useGame.getState().startGame(roster, {
+      seed: hashSeed(`${runSeed}:engine`),
+      skipTutorial: true,
+    })
+    let steps = 0
+    let duelStarts = 0
 
-    const eff = effStats(p)
-    assert(p.hp >= 0 && p.hp <= eff.maxHp, 'hp within bounds', { hp: p.hp, max: eff.maxHp })
-    assert(p.energy >= 0 && p.energy <= eff.maxEnergy, 'energy within bounds', { e: p.energy })
-    assert(p.level >= 1 && p.level <= 5, 'level within bounds', { lvl: p.level })
-    assert(p.quests.length <= 2, 'never more than 2 active quests', { q: p.quests.length })
-    assert(
-      p.abilities.length <= maxAbilitySlots(p.level),
-      'abilities within slot limit',
-      { a: p.abilities.length, lvl: p.level }
-    )
-    assert(REGIONS[p.region], 'player on a real region', { r: p.region })
+    while (useGame.getState().screen === 'game' && steps < MAX_STEPS) {
+      steps++
+      const state = useGame.getState()
 
-    const region = REGIONS[p.region]
-    const creatureHere = s.creatures[p.region]
-    const bossHere = p.region === 'blackspire' && s.bossSpawned && s.bossHp > 0
-
-    // action priority: fight boss > duel sometimes > fight creature > shop > rest
-    if (!s.actionUsed && bossHere && p.hp > 5) {
-      s.startCombat(true)
-      continue
-    }
-    const enemyHere = s.players.find(
-      (pl) => pl.faction !== p.faction && !pl.dead && pl.region === p.region
-    )
-    if (!s.actionUsed && enemyHere && !region.town && p.hp > 4 && Math.random() < 0.7) {
-      s.startPvp(enemyHere.idx)
-      assert(useGame.getState().combat?.pvp, 'duel opened as pvp combat')
-      continue
-    }
-    if (!s.actionUsed && creatureHere && p.hp > 4 && Math.random() < 0.8) {
-      s.startCombat(false)
-      continue
-    }
-    if (region.town && p.gold >= 4 && Math.random() < 0.5) {
-      // sometimes train an ability, sometimes buy an item
-      const freeSlots = maxAbilitySlots(p.level) - p.abilities.length
-      const learnable = trainableForHero(p.heroId).filter(
-        (ab) => !p.abilities.includes(ab.id) && ab.cost <= p.gold
-      )
-      if (freeSlots > 0 && learnable.length && Math.random() < 0.5) {
-        s.buyAbility(rnd(learnable).id)
-      } else {
-        const affordable = ITEM_LIST.filter((i) => i.cost <= p.gold)
-        if (affordable.length) s.buyItem(rnd(affordable).id)
-      }
-    }
-    if (!s.actionUsed && p.hp < eff.maxHp - 4 && region.town && Math.random() < 0.7) {
-      s.rest()
-      continue
-    }
-    if (s.movesLeft > 0 && Math.random() < 0.75) {
-      const opts = reachableRegions(s)
-      if (opts.length) {
-        s.moveTo(rnd(opts))
+      // Privacy handoff has precedence over every player-specific decision.
+      // The engine intentionally rejects attempts to dismiss/reveal them first.
+      if (state.handoffPending) {
+        state.confirmHandoff()
         continue
       }
+      if (state.eventReveal) {
+        state.dismissEventReveal()
+        continue
+      }
+      if (state.eventChoice) {
+        assert(state.eventChoice.options.length > 0, 'event choice has no options')
+        state.chooseEventOption(rnd(state.eventChoice.options, botRng))
+        continue
+      }
+      if (state.combat) {
+        if (state.combat.pvp && ['defender', 'attacker'].includes(state.combat.pvpHandoff)) {
+          state.confirmPvpHandoff()
+          continue
+        }
+        if (state.combat.over) {
+          state.closeCombat()
+          continue
+        }
+        if (state.combat.pvp && state.combat.pvpDefensePending) {
+          state.setPvpDefense(rnd(['brace', 'counter'], botRng))
+          continue
+        }
+        if (state.combat.rolling) {
+          // The 460ms lock exists only to keep the rendered dice animation from
+          // accepting another click. A headless simulation has no animation.
+          useGame.setState((draft) => {
+            if (draft.combat) draft.combat.rolling = false
+          })
+          continue
+        }
+        const player = state.players[state.combat.playerIdx]
+        if (player.hp <= 2 && botRng() < 0.8) {
+          state.combatFlee()
+          continue
+        }
+        if (player.consumables.length && botRng() < 0.3) {
+          const usable = player.consumables
+            .map((itemId, index) => ({ itemId, index, effects: ITEMS[itemId]?.effects || {} }))
+            .filter(({ effects }) =>
+              (effects.heal && player.hp < effStats(player).maxHp) ||
+              effects.combatDice ||
+              effects.combatAutoHits ||
+              effects.combatArmor
+            )
+          if (usable.length) state.useConsumable(rnd(usable, botRng).index)
+        }
+        const abilities = player.abilities
+          .map((abilityId) => ABILITIES[abilityId])
+          .filter((ability) => ability?.type === 'active' && player.energy >= ability.energy)
+        const abilityId = abilities.length && botRng() < 0.45
+          ? rnd(abilities, botRng).id
+          : null
+        state.combatRound(abilityId, state.combat.round)
+        continue
+      }
+      if (state.celebrations.length) {
+        state.dismissCelebration()
+        continue
+      }
+      if (state.questDraw) {
+        const options = state.questDraw.options
+        assert(options.length > 0, 'quest draw has no options')
+        state.pickQuest(rnd(options, botRng))
+        continue
+      }
+
+      const player = selCurrentPlayer(state)
+      assert(player, 'current player is missing')
+      validatePlayer(player)
+
+      if (player.pendingTalents?.length) {
+        const options = talentsForLevel(player.pendingTalents[0], player.heroId)
+        assert(options.length > 0, 'pending talent has no options', { level: player.pendingTalents[0] })
+        state.chooseTalent(rnd(options, botRng).id)
+        continue
+      }
+
+      const effective = effStats(player)
+      const region = REGIONS[player.region]
+      const creature = state.creatures[player.region]
+      const bossHere = player.region === 'blackspire' && state.bossSpawned && state.bossHp > 0
+
+      if (!state.actionUsed && bossHere && player.hp > 5) {
+        state.startCombat(true)
+        continue
+      }
+      const enemiesHere = region.town
+        ? []
+        : state.players.filter(
+            (candidate) =>
+              candidate.faction !== player.faction &&
+              !candidate.dead &&
+              candidate.region === player.region
+          )
+      if (!state.actionUsed && enemiesHere.length && player.hp > 4 && botRng() < 0.75) {
+        state.startPvp(rnd(enemiesHere, botRng).idx)
+        if (useGame.getState().combat?.pvp) duelStarts++
+        continue
+      }
+      if (!state.actionUsed && creature && player.hp > 4 && botRng() < 0.85) {
+        state.startCombat(false)
+        continue
+      }
+      if (region.town && player.gold >= 3 && botRng() < 0.55) {
+        const freeSlots = maxAbilitySlots(player.level) - player.abilities.length
+        const abilities = trainableForHero(player.heroId).filter(
+          (ability) => !player.abilities.includes(ability.id) && ability.cost <= player.gold
+        )
+        if (freeSlots > 0 && abilities.length && botRng() < 0.5) {
+          state.buyAbility(rnd(abilities, botRng).id)
+          continue
+        }
+        const items = affordableItems(state, player)
+        if (items.length) {
+          state.buyItem(rnd(items, botRng).id, {
+            turnId: state.turnId,
+            requestId: `sim:${runSeed}:${steps}`,
+          })
+          continue
+        }
+      }
+      if (!state.actionUsed && region.town && player.hp < effective.maxHp - 3 && botRng() < 0.7) {
+        state.rest()
+        continue
+      }
+      if (state.movesLeft > 0 && botRng() < 0.8) {
+        const reachable = reachableRegions(state)
+        if (reachable.length) {
+          const target = movementTarget(state, player, botRng)
+          const preferred = shortestStep(state, player, target)
+          state.moveTo(
+            preferred && reachable.includes(preferred) ? preferred : rnd(reachable, botRng)
+          )
+          continue
+        }
+      }
+      state.endTurn({ playerIdx: player.idx, turnId: state.turnId })
     }
-    s.endTurn()
-  }
 
-  const end = store.getState()
-  assert(steps < MAX_STEPS, 'game finished within step budget', { steps })
-  assert(end.screen === 'victory', 'game reached victory screen', { screen: end.screen })
-  assert(end.winner, 'winner object set')
-  assert(end.round <= 11, 'rounds within limit', { round: end.round })
-  return {
-    game: gameIdx,
-    rounds: Math.min(end.round, 10),
-    winner: end.winner.faction ?? 'draw',
-    reason: end.winner.slayer ? 'boss-kill' : 'victory-points',
-    duels: end.players.reduce((n, p) => n + (p.pvpWins || 0), 0),
-    steps,
-  }
+    const end = useGame.getState()
+    assert(steps < MAX_STEPS, 'game exceeded step budget', { gameIndex, playerCount, steps })
+    assert(end.screen === 'victory', 'game did not reach victory', {
+      gameIndex,
+      playerCount,
+      screen: end.screen,
+    })
+    assert(end.winner, 'winner is missing', { gameIndex, playerCount })
+    return {
+      gameIndex,
+      runSeed,
+      playerCount,
+      rounds: Math.min(end.round, GAME.MAX_ROUNDS),
+      winner: end.winner.faction ?? 'draw',
+      reason: end.winner.slayer ? 'boss-kill' : 'victory-points',
+      duelStarts,
+      duelWins: end.players.reduce((total, player) => total + (player.pvpWins || 0), 0),
+      heroes: end.players.map((player) => ({ heroId: player.heroId, faction: player.faction })),
+    }
 }
 
-const N = 30
-const results = []
-for (let i = 0; i < N; i++) {
-  try {
-    results.push(playOneGame(i))
-  } catch (e) {
-    console.error(`Game ${i} failed:`, e.message)
-  }
+function percentage(count, total) {
+  return total ? `${((count / total) * 100).toFixed(1)}%` : '0.0%'
 }
 
-const byWinner = {}
-const byReason = {}
-let totalRounds = 0
-let totalDuels = 0
-for (const r of results) {
-  byWinner[r.winner] = (byWinner[r.winner] || 0) + 1
-  byReason[r.reason] = (byReason[r.reason] || 0) + 1
-  totalRounds += r.rounds
-  totalDuels += r.duels
+function average(results, field) {
+  return results.length
+    ? (results.reduce((sum, result) => sum + result[field], 0) / results.length).toFixed(2)
+    : '0.00'
 }
-console.log(`\n${results.length}/${N} games completed cleanly`)
-console.log('winners:', byWinner)
-console.log('end condition:', byReason)
-console.log('avg rounds:', (totalRounds / results.length).toFixed(1))
-console.log('avg duel wins per game:', (totalDuels / results.length).toFixed(1))
+
+function report(label, expectedGames, results) {
+  const wins = { accord: 0, dominion: 0, draw: 0 }
+  const reasons = { 'boss-kill': 0, 'victory-points': 0 }
+  const heroStats = {}
+  for (const result of results) {
+    wins[result.winner] = (wins[result.winner] || 0) + 1
+    reasons[result.reason] = (reasons[result.reason] || 0) + 1
+    for (const hero of result.heroes) {
+      heroStats[hero.heroId] ||= { games: 0, factionWins: 0 }
+      heroStats[hero.heroId].games++
+      if (result.winner === hero.faction) heroStats[hero.heroId].factionWins++
+    }
+  }
+  console.log(`\n${label}: ${results.length}/${expectedGames} games completed`)
+  console.log(
+    `  wins: Accord ${wins.accord} (${percentage(wins.accord, results.length)}), ` +
+      `Dominion ${wins.dominion} (${percentage(wins.dominion, results.length)}), ` +
+      `draw ${wins.draw} (${percentage(wins.draw, results.length)})`
+  )
+  console.log(
+    `  endings: boss ${reasons['boss-kill']}, points ${reasons['victory-points']}; ` +
+      `avg rounds ${average(results, 'rounds')}; avg duels started ${average(results, 'duelStarts')}; ` +
+      `avg duel wins ${average(results, 'duelWins')}`
+  )
+  const heroes = Object.entries(heroStats)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([heroId, stats]) => `${heroId} ${percentage(stats.factionWins, stats.games)} (${stats.games})`)
+  console.log(`  hero faction win rate (appearances): ${heroes.join(', ')}`)
+}
+
+const options = parseArgs(process.argv.slice(2))
+const setups = options.setup === 'both' ? [2, 4] : [Number.parseInt(options.setup, 10)]
+let failed = 0
+console.log(`Seed: ${options.seed}`)
+console.log(`Games per setup: ${options.games}`)
+
+for (const playerCount of setups) {
+  const results = []
+  for (let gameIndex = 0; gameIndex < options.games; gameIndex++) {
+    const runSeed = `${options.seed}:${playerCount}p:${gameIndex}`
+    try {
+      results.push(playOneGame({ gameIndex, playerCount, runSeed }))
+    } catch (error) {
+      failed++
+      console.error(`${playerCount}p game ${gameIndex} failed (seed ${runSeed}): ${error.message}`)
+    }
+  }
+  report(`${playerCount}-player`, options.games, results)
+  if (results.length !== options.games) process.exitCode = 1
+}
+
+if (failed) {
+  console.error(`\n${failed} simulation game(s) failed. Re-run with the printed seed and setup.`)
+  process.exitCode = 1
+}

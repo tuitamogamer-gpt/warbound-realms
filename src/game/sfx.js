@@ -38,7 +38,10 @@ export const isMuted = () => muted
 export const setMuted = (m) => {
   muted = m
   // silence in-flight audio immediately (stingers run up to ~2.8s)
-  if (ctx) (m ? ctx.suspend() : ctx.resume())
+  if (ctx) {
+    if (m) ctx.suspend()
+    else ctx.resume()
+  }
   try {
     localStorage.setItem('wb-muted', m ? '1' : '0')
   } catch {

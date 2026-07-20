@@ -163,7 +163,7 @@ export const ITEMS = {
 }
 
 export const ITEM_LIST = Object.values(ITEMS)
-export const itemArt = (id) => `/assets/items/${id}.jpg`
+export const itemArt = (id) => `/assets/items/${id}.webp`
 
 // Consumables that only do something during combat (can't be used on the map).
 export const isCombatOnlyConsumable = (id) => {

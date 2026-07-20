@@ -16,7 +16,7 @@ export const HEROES = {
     name: 'Zyra Cinderweave',
     title: 'Flame Sorceress',
     faction: 'dominion',
-    base: { hp: 7, dice: 2, armor: 0, energy: 5, move: 2 },
+    base: { hp: 8, dice: 2, armor: 0, energy: 5, move: 2 },
     signature: 'fireball',
     blurb: 'Her hair caught fire the day she was born. The fire never lost.',
   },
@@ -34,7 +34,7 @@ export const HEROES = {
     name: 'Ser Aldric Dawnshield',
     title: 'Human Knight',
     faction: 'accord',
-    base: { hp: 11, dice: 2, armor: 1, energy: 2, move: 2 },
+    base: { hp: 9, dice: 2, armor: 1, energy: 2, move: 2 },
     signature: 'shield_wall',
     blurb: 'The last shield between the dark and the dawn — and he knows it.',
   },
@@ -43,7 +43,7 @@ export const HEROES = {
     name: 'Elowen Starbrook',
     title: 'Elf Arcanist',
     faction: 'accord',
-    base: { hp: 7, dice: 2, armor: 0, energy: 4, move: 2 },
+    base: { hp: 8, dice: 2, armor: 0, energy: 4, move: 2 },
     signature: 'arcane_bolt',
     blurb: 'She has read every book in Eldara. Twice. In the original starlight.',
   },
@@ -52,11 +52,11 @@ export const HEROES = {
     name: 'Torvald Lightmend',
     title: 'Dwarf Cleric',
     faction: 'accord',
-    base: { hp: 9, dice: 2, armor: 0, energy: 4, move: 2 },
+    base: { hp: 10, dice: 2, armor: 0, energy: 4, move: 2 },
     signature: 'mend',
     blurb: 'Half priest, half anvil. His prayers hit like hammers.',
   },
 }
 
 export const HERO_LIST = Object.values(HEROES)
-export const heroArt = (id) => `/assets/heroes/${id}.jpg`
+export const heroArt = (id) => `/assets/heroes/${id}.webp`

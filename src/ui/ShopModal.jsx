@@ -1,24 +1,29 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useGame, selCurrentPlayer, selEventMod } from '../game/store'
 import { ITEM_LIST, ITEMS, itemArt } from '../data/items'
 import { trainableForHero, abilityArt, maxAbilitySlots } from '../data/abilities'
 import { GAME } from '../data/constants'
 import { sfx } from '../game/sfx'
+import ModalShell from './ModalShell'
 
-function ItemsTab({ player, discount, buyItem }) {
+function ItemsTab({ player, discount, buyItem, filter, affordableOnly, isPurchasing }) {
   const owned = (item) =>
     item.slot !== 'consumable' && player.items.includes(item.id)
   const consumablesFull = player.consumables.length >= GAME.MAX_CONSUMABLES
 
   return (
     <div className="shop-grid">
-      {ITEM_LIST.map((item) => {
+      {ITEM_LIST.filter((item) => filter === 'all' || item.slot === filter).filter((item) => {
+        const cost = Math.max(1, item.cost - discount)
+        return !affordableOnly || player.gold >= cost
+      }).map((item) => {
         const cost = Math.max(1, item.cost - discount)
         const replaces = player.items.find(
           (id) => ITEMS[id].slot === item.slot && id !== item.id
         )
         const disabled =
           player.gold < cost ||
+          isPurchasing(item.id) ||
           owned(item) ||
           (item.slot === 'consumable' && consumablesFull)
         return (
@@ -35,6 +40,7 @@ function ItemsTab({ player, discount, buyItem }) {
             <img src={itemArt(item.id)} alt={item.name} />
             <div className="shop-item-name">{item.name}</div>
             <div className="shop-item-desc">{item.desc}</div>
+            {replaces && <div className="shop-compare">Replaces {ITEMS[replaces].name}</div>}
             <div className="shop-item-cost">
               💰 {cost} <span className="shop-slot">{item.slot}</span>
             </div>
@@ -102,15 +108,31 @@ export default function ShopModal() {
   const openShop = useGame((s) => s.openShop)
   const buyItem = useGame((s) => s.buyItem)
   const buyAbility = useGame((s) => s.buyAbility)
-  const state = useGame()
   const [tab, setTab] = useState('items')
-  const player = selCurrentPlayer(state)
+  const [filter, setFilter] = useState('all')
+  const [affordableOnly, setAffordableOnly] = useState(false)
+  const purchaseLocks = useRef(new Set())
+  const purchaseSeq = useRef(0)
+  const [, redrawLocks] = useState(0)
+  const player = useGame(selCurrentPlayer)
+  const discount = useGame((s) => selEventMod(s).shopDiscount || 0)
+  const turnId = useGame((s) => s.turnId)
   if (!open || !player) return null
-  const discount = selEventMod(state).shopDiscount || 0
+
+  const guardedPurchase = (itemId) => {
+    if (purchaseLocks.current.has(itemId)) return
+    purchaseLocks.current.add(itemId)
+    redrawLocks((value) => value + 1)
+    purchaseSeq.current += 1
+    buyItem(itemId, { turnId, requestId: `shop-${turnId}-${itemId}-${purchaseSeq.current}` })
+    window.setTimeout(() => {
+      purchaseLocks.current.delete(itemId)
+      redrawLocks((value) => value + 1)
+    }, 450)
+  }
 
   return (
-    <div className="overlay" onClick={() => openShop(false)}>
-      <div className="modal shop-modal" onClick={(e) => e.stopPropagation()}>
+    <ModalShell className="shop-modal" ariaLabel="Town market and trainer" onClose={() => openShop(false)} closeOnBackdrop>
         <div className="shop-tabs">
           <button className={`chip ${tab === 'items' ? 'chip-on' : ''}`} onClick={() => setTab('items')}>
             🛒 Market{discount ? ` (−${discount}!)` : ''}
@@ -120,13 +142,37 @@ export default function ShopModal() {
           </button>
           <span className="shop-gold">💰 {player.gold}</span>
         </div>
+        {tab === 'items' && (
+          <div className="shop-filters" aria-label="Market filters">
+            {['all', 'weapon', 'armor', 'trinket', 'consumable'].map((slot) => (
+              <button
+                key={slot}
+                className={`chip ${filter === slot ? 'chip-on' : ''}`}
+                aria-pressed={filter === slot}
+                onClick={() => setFilter(slot)}
+              >
+                {slot === 'all' ? 'All' : slot[0].toUpperCase() + slot.slice(1)}
+              </button>
+            ))}
+            <label className="shop-affordable">
+              <input type="checkbox" checked={affordableOnly} onChange={(event) => setAffordableOnly(event.target.checked)} />
+              Affordable
+            </label>
+          </div>
+        )}
         {tab === 'items' ? (
-          <ItemsTab player={player} discount={discount} buyItem={buyItem} />
+          <ItemsTab
+            player={player}
+            discount={discount}
+            buyItem={guardedPurchase}
+            filter={filter}
+            affordableOnly={affordableOnly}
+            isPurchasing={(itemId) => purchaseLocks.current.has(itemId)}
+          />
         ) : (
           <TrainerTab player={player} buyAbility={buyAbility} />
         )}
-        <button className="btn-primary" onClick={() => openShop(false)}>Done</button>
-      </div>
-    </div>
+        <div className="shop-footer"><button className="btn-primary" onClick={() => openShop(false)}>Done</button></div>
+    </ModalShell>
   )
 }

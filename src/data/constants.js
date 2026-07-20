@@ -11,6 +11,10 @@ export const GAME = {
   DEATH_GOLD_LOSS: 0.5, // fraction of gold lost on death
   PVP_VP: 2, // victory points for winning a duel
   PVP_XP: 2, // experience for winning a duel
+  BOSS_RETREAT_REGEN: 5,
+  ALLY_ASSIST_HP: 3,
+  ALLY_ASSIST_ENERGY: 1,
+  QUEST_REROLL_COST: 1,
 }
 
 // cumulative XP needed to reach level 1..5

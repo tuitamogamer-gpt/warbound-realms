@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { useGame, selCurrentPlayer } from '../game/store'
 import { HEROES, heroArt } from '../data/heroes'
 import { ITEMS, itemArt, isCombatOnlyConsumable } from '../data/items'
@@ -8,6 +7,7 @@ import { QUESTS } from '../data/quests'
 import { FACTIONS } from '../data/constants'
 import { effStats, xpForNextLevel } from '../game/rules'
 import { sfx } from '../game/sfx'
+import ModalShell from './ModalShell'
 
 const SLOT_META = {
   weapon: { label: 'Weapon', icon: '🗡️', hint: 'Attack dice & strikes' },
@@ -43,19 +43,9 @@ export default function CharacterSheet() {
   const sheetOpen = useGame((s) => s.sheetOpen)
   const openSheet = useGame((s) => s.openSheet)
   const players = useGame((s) => s.players)
-  const useConsumable = useGame((s) => s.useConsumable)
+  const consumeItem = useGame((s) => s.useConsumable)
   const inCombat = useGame((s) => !!s.combat && !s.combat.over)
   const current = useGame(selCurrentPlayer)
-
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === 'Escape') openSheet(null)
-    }
-    if (sheetOpen != null) {
-      window.addEventListener('keydown', onKey)
-      return () => window.removeEventListener('keydown', onKey)
-    }
-  }, [sheetOpen, openSheet])
 
   if (sheetOpen == null) return null
   const player = players[sheetOpen]
@@ -68,11 +58,15 @@ export default function CharacterSheet() {
   const pending = player.pendingTalents?.length || 0
 
   return (
-    <div className="overlay" onClick={() => openSheet(null)}>
-      <div className="modal sheet-modal" style={{ '--fc': faction.color }} onClick={(e) => e.stopPropagation()}>
-        <button className="sheet-close" onClick={() => openSheet(null)}>✕</button>
+    <ModalShell
+      className="sheet-modal"
+      ariaLabel={`${player.name} character sheet`}
+      onClose={() => openSheet(null)}
+      closeOnBackdrop
+    >
+        <button className="sheet-close" aria-label="Close character sheet" onClick={() => openSheet(null)}>✕</button>
 
-        <div className="sheet-grid">
+        <div className="sheet-grid" style={{ '--fc': faction.color }}>
           {/* left column: identity */}
           <div className="sheet-col sheet-identity">
             <img className="sheet-portrait" src={heroArt(player.heroId)} alt={hero.name} />
@@ -126,7 +120,7 @@ export default function CharacterSheet() {
                   }
                   onClick={() => {
                     sfx.click()
-                    useConsumable(i)
+                    consumeItem(i)
                   }}
                 >
                   <img src={itemArt(id)} alt={ITEMS[id].name} />
@@ -176,6 +170,7 @@ export default function CharacterSheet() {
 
             {(player.talents || []).map((tid) => {
               const t = TALENTS[tid]
+              if (!t) return null
               return (
                 <div className="ability-card talent-card" key={tid}>
                   <div className="ability-card-head">{t.icon} {t.name} <span className="ability-cost">Lv {t.level}</span></div>
@@ -195,6 +190,7 @@ export default function CharacterSheet() {
             <div className="sheet-section-title">Active Quests</div>
             {player.quests.map((qid) => {
               const q = QUESTS.find((x) => x.id === qid)
+              if (!q) return null
               return (
                 <div className="quest-card" key={qid}>
                   <div className="quest-name">{q.name}</div>
@@ -205,7 +201,6 @@ export default function CharacterSheet() {
             })}
           </div>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   )
 }

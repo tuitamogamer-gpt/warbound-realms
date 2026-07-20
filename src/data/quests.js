@@ -8,7 +8,9 @@ import { regionArt } from './regions'
 
 // Card art: hunt quests show their prey, travel quests show the destination.
 export const questArt = (quest) =>
-  quest.type === 'killCreature' ? creatureArt(quest.creature) : regionArt(quest.region)
+  quest.type === 'killCreature'
+    ? creatureArt(quest.creature)
+    : regionArt(quest.region || (quest.tier === 3 ? 'frostpeak' : 'stormwatch_bridge'))
 export const QUESTS = [
   {
     id: 'wolves_at_the_door',
@@ -33,7 +35,7 @@ export const QUESTS = [
     tier: 2,
     region: 'mirefen',
     text: 'Slay a creature in Mirefen Swamp.',
-    reward: { xp: 3, gold: 3, vp: 2 },
+    reward: { xp: 3, gold: 2, vp: 1 },
   },
   {
     id: 'the_sleeping_stone',
@@ -41,7 +43,7 @@ export const QUESTS = [
     type: 'killCreature',
     creature: 'stone_golem',
     text: 'Slay a Stone Golem.',
-    reward: { xp: 4, gold: 3, vp: 2 },
+    reward: { xp: 3, gold: 3, vp: 1 },
   },
   {
     id: 'queen_of_talons',
@@ -49,7 +51,7 @@ export const QUESTS = [
     type: 'killCreature',
     creature: 'harpy_matriarch',
     text: 'Slay a Harpy Matriarch.',
-    reward: { xp: 4, gold: 3, vp: 2 },
+    reward: { xp: 3, gold: 3, vp: 1 },
   },
   {
     id: 'rest_for_the_fallen',
@@ -57,7 +59,7 @@ export const QUESTS = [
     type: 'killCreature',
     creature: 'gravebound_knight',
     text: 'Slay a Gravebound Knight.',
-    reward: { xp: 4, gold: 3, vp: 2 },
+    reward: { xp: 3, gold: 3, vp: 1 },
   },
   {
     id: 'cold_blood',
@@ -65,7 +67,7 @@ export const QUESTS = [
     type: 'killCreature',
     creature: 'frost_wyrm',
     text: 'Slay the Frost Wyrm.',
-    reward: { xp: 6, gold: 5, vp: 3 },
+    reward: { xp: 3, gold: 3, vp: 2 },
   },
   {
     id: 'heart_of_cinders',
@@ -73,7 +75,7 @@ export const QUESTS = [
     type: 'killCreature',
     creature: 'infernal_colossus',
     text: 'Slay the Infernal Colossus.',
-    reward: { xp: 6, gold: 5, vp: 3 },
+    reward: { xp: 3, gold: 3, vp: 2 },
   },
   {
     id: 'silence_the_void',
@@ -81,7 +83,7 @@ export const QUESTS = [
     type: 'killCreature',
     creature: 'void_shrike',
     text: 'Slay the Void Shrike.',
-    reward: { xp: 6, gold: 5, vp: 3 },
+    reward: { xp: 3, gold: 3, vp: 2 },
   },
   {
     id: 'ashes_and_echoes',
@@ -90,7 +92,7 @@ export const QUESTS = [
     tier: 2,
     region: 'scorched_vale',
     text: 'Slay a creature in the Scorched Vale.',
-    reward: { xp: 3, gold: 3, vp: 2 },
+    reward: { xp: 3, gold: 2, vp: 1 },
   },
   {
     id: 'scout_the_ruins',
@@ -123,5 +125,110 @@ export const QUESTS = [
     region: 'wayfarers_rest',
     text: "Travel to Wayfarer's Rest.",
     reward: { xp: 1, gold: 3, vp: 1 },
+  },
+  {
+    id: 'mist_over_veilwood',
+    name: 'Mist over Veilwood',
+    type: 'killTier',
+    tier: 2,
+    region: 'veilwood_thicket',
+    text: 'Slay a tier II creature in Veilwood Thicket.',
+    reward: { xp: 3, gold: 2, vp: 1 },
+  },
+  {
+    id: 'barrow_watch',
+    name: 'Barrow Watch',
+    type: 'killTier',
+    tier: 2,
+    region: 'sunken_barrows',
+    text: 'Slay a tier II creature in the Sunken Barrows.',
+    reward: { xp: 3, gold: 2, vp: 1 },
+  },
+  {
+    id: 'cliffbreaker',
+    name: 'Cliffbreaker',
+    type: 'killTier',
+    tier: 2,
+    region: 'gale_cliffs',
+    text: 'Slay a tier II creature at Gale Cliffs.',
+    reward: { xp: 3, gold: 2, vp: 1 },
+  },
+  {
+    id: 'thornmaw_trial',
+    name: 'Thornmaw Trial',
+    type: 'killTier',
+    tier: 2,
+    region: 'thornmaw_jungle',
+    text: 'Slay a tier II creature in Thornmaw Jungle.',
+    reward: { xp: 3, gold: 2, vp: 1 },
+  },
+  {
+    id: 'bridge_toll',
+    name: 'The Bridge Toll',
+    type: 'killTier',
+    tier: 2,
+    region: 'stormwatch_bridge',
+    text: 'Slay a tier II creature at Stormwatch Bridge.',
+    reward: { xp: 3, gold: 2, vp: 1 },
+  },
+  {
+    id: 'bones_of_wyrmshade',
+    name: 'Bones of Wyrmshade',
+    type: 'killTier',
+    tier: 2,
+    region: 'wyrmshade_pass',
+    text: 'Slay a tier II creature in Wyrmshade Pass.',
+    reward: { xp: 3, gold: 2, vp: 1 },
+  },
+  {
+    id: 'silverwood_patrol',
+    name: 'Silverwood Patrol',
+    type: 'killTier',
+    tier: 1,
+    region: 'silverwood',
+    text: 'Slay a tier I creature in Silverwood Forest.',
+    reward: { xp: 2, gold: 2, vp: 1 },
+  },
+  {
+    id: 'ashen_patrol',
+    name: 'Ashen Patrol',
+    type: 'killTier',
+    tier: 1,
+    region: 'ashen_wastes',
+    text: 'Slay a tier I creature in the Ashen Wastes.',
+    reward: { xp: 2, gold: 2, vp: 1 },
+  },
+  {
+    id: 'hold_the_highlands',
+    name: 'Hold the Highlands',
+    type: 'visit',
+    region: 'graystone',
+    text: 'Travel to the Graystone Hills.',
+    reward: { xp: 1, gold: 2, vp: 1 },
+  },
+  {
+    id: 'cross_the_stormwatch',
+    name: 'Cross the Stormwatch',
+    type: 'visit',
+    region: 'stormwatch_bridge',
+    text: 'Travel to Stormwatch Bridge.',
+    reward: { xp: 1, gold: 2, vp: 1 },
+  },
+  {
+    id: 'road_through_wyrmshade',
+    name: 'Road through Wyrmshade',
+    type: 'visit',
+    region: 'wyrmshade_pass',
+    text: 'Travel to Wyrmshade Pass.',
+    reward: { xp: 1, gold: 2, vp: 1 },
+  },
+  {
+    id: 'frostpeak_cull',
+    name: 'Frostpeak Cull',
+    type: 'killTier',
+    tier: 3,
+    region: 'frostpeak',
+    text: 'Slay any tier III creature at Frostpeak.',
+    reward: { xp: 3, gold: 3, vp: 2 },
   },
 ]

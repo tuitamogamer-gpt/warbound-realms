@@ -1,6 +1,7 @@
 import { useGame } from '../game/store'
 import { QUESTS, questArt } from '../data/quests'
 import { sfx } from '../game/sfx'
+import ModalShell from './ModalShell'
 
 // The active player draws two quest cards and keeps one; the other returns
 // to the bottom of the deck.
@@ -16,8 +17,7 @@ export default function QuestDrawModal() {
   const player = players[questDraw.playerIdx]
 
   return (
-    <div className="overlay overlay-dark">
-      <div className="modal quest-draw-modal">
+    <ModalShell className="quest-draw-modal" overlayClassName="overlay-dark" ariaLabel="Choose a new quest">
         <h2>📜 New Quest</h2>
         <p className="talent-sub">{player.name}, the quest board offers two contracts — choose one:</p>
         <div className="quest-draw-options">
@@ -40,7 +40,6 @@ export default function QuestDrawModal() {
             )
           })}
         </div>
-      </div>
-    </div>
+    </ModalShell>
   )
 }
