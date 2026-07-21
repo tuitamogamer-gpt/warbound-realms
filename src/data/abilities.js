@@ -29,8 +29,8 @@ export const ABILITIES = {
   },
   warcry: {
     id: 'warcry', heroId: 'grosh', type: 'active', cost: 6, energy: 2,
-    name: 'War Cry', desc: 'The enemy rolls 2 fewer dice this combat round.',
-    effect: { enemyDiceDown: 2 },
+    name: 'War Cry', desc: 'Reduce the foe\'s Attack by 2 this combat round.',
+    effect: { enemyAttackDown: 2 },
   },
   iron_will: {
     id: 'iron_will', heroId: 'grosh', type: 'passive', cost: 7,
@@ -157,8 +157,8 @@ export const ABILITIES = {
   },
   frost_nova: {
     id: 'frost_nova', heroId: 'elowen', type: 'active', cost: 6, energy: 2,
-    name: 'Frost Nova', desc: 'The enemy rolls 2 fewer dice this combat round.',
-    effect: { enemyDiceDown: 2 },
+    name: 'Frost Nova', desc: 'Reduce the foe\'s Attack by 2 this combat round.',
+    effect: { enemyAttackDown: 2 },
   },
   archmage_focus: {
     id: 'archmage_focus', heroId: 'elowen', type: 'passive', cost: 9,
@@ -201,8 +201,8 @@ export const ABILITIES = {
   // ---- Wildkeeper Ranger (Wrenna) — mirrored with Ashka's kit ----
   pinning_shot: {
     id: 'pinning_shot', heroId: 'wrenna', signature: true, type: 'active', energy: 2,
-    name: 'Pinning Shot', desc: '+1 die, and the enemy rolls 1 fewer die this round.',
-    effect: { bonusDice: 1, enemyDiceDown: 1 },
+    name: 'Pinning Shot', desc: '+1 die, and reduce the foe\'s Attack by 1 this round.',
+    effect: { bonusDice: 1, enemyAttackDown: 1 },
   },
   triple_volley: {
     id: 'triple_volley', heroId: 'wrenna', type: 'active', cost: 7, energy: 3,
@@ -233,8 +233,8 @@ export const ABILITIES = {
   // ---- Orc Stormseer (Ashka) — mirrored with Wrenna's kit ----
   static_lash: {
     id: 'static_lash', heroId: 'ashka', signature: true, type: 'active', energy: 2,
-    name: 'Static Lash', desc: '+1 die, and the enemy rolls 1 fewer die this round.',
-    effect: { bonusDice: 1, enemyDiceDown: 1 },
+    name: 'Static Lash', desc: '+1 die, and reduce the foe\'s Attack by 1 this round.',
+    effect: { bonusDice: 1, enemyAttackDown: 1 },
   },
   chain_lightning: {
     id: 'chain_lightning', heroId: 'ashka', type: 'active', cost: 7, energy: 3,

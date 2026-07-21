@@ -7,15 +7,18 @@ import { ITEMS, itemArt } from '../data/items'
 import { ABILITIES, abilityArt, isHealOnly } from '../data/abilities'
 import { effStats } from '../game/rules'
 import { sfx } from '../game/sfx'
+import DicePools from './DicePools'
 import ModalShell from './ModalShell'
 
 function Die({ value, hitOn, critFrom = 99, delay, variant = '' }) {
   const isHit = value >= hitOn
   const isCrit = value >= critFrom
+  const dieName = variant === 'ranged' ? 'Blue ranged' : variant === 'melee' ? 'Red melee' : variant === 'defense' ? 'Green guard' : 'Defender'
   return (
     <span
       className={`die ${variant ? `die-${variant}` : ''} ${isCrit ? 'die-crit' : isHit ? 'die-hit' : 'die-miss'}`}
       style={{ animationDelay: `${delay}ms` }}
+      aria-label={`${dieName} die rolled ${value}: ${isCrit ? 'critical' : isHit ? 'success' : 'miss'}`}
     >
       {value}
     </span>
@@ -82,6 +85,31 @@ export default function CombatModal() {
   const trait = !isPvp && def?.trait
   const traitName = typeof trait === 'string' ? trait : trait?.name
   const traitDesc = typeof trait === 'object' ? trait?.desc : null
+  // The fallbacks keep old saves and an in-flight engine migration readable.
+  // New creature definitions expose threat/attack/armor directly.
+  const creatureThreat = !isPvp ? (def?.threat ?? def?.hitOn ?? 4) : null
+  const creatureAttack = !isPvp ? (def?.attack ?? def?.dice ?? 0) : null
+  const creatureArmor = !isPvp ? (def?.armor ?? trait?.armor ?? 0) : null
+  const provoked = !isPvp ? (combat.provoked ?? combat.threat ?? 0) : 0
+  const provokedMax = GAME.PROVOKED_MAX ?? GAME.THREAT_MAX ?? 2
+  const provokedAttack = provoked * (GAME.PROVOKED_ATTACK ?? 1)
+  const minionAttack = !isPvp
+    ? (combat.minionAttack ?? combat.minionDice ?? def?.minions?.attack ?? def?.minions?.dice ?? 0)
+    : 0
+  const livingMinions = !isPvp ? (combat.minions || []).filter((minion) => minion.hp > 0).length : 0
+  const lastEnemyAttack = !isPvp ? combat.lastEnemyAttack : null
+  const autoHitPhase = combat.lastAutoHitPhase ?? (combat.lastRangedRolls ? 'ranged' : 'melee')
+  const enemyAttackTitle = lastEnemyAttack
+    ? [
+        `base ${lastEnemyAttack.base ?? creatureAttack}`,
+        lastEnemyAttack.event ? `event +${lastEnemyAttack.event}` : null,
+        lastEnemyAttack.trait ? `trait +${lastEnemyAttack.trait}` : null,
+        lastEnemyAttack.minions ? `minions +${lastEnemyAttack.minions}` : null,
+        lastEnemyAttack.provoked ? `provoked +${lastEnemyAttack.provoked}` : null,
+        lastEnemyAttack.reduced ? `reduced −${lastEnemyAttack.reduced}` : null,
+        `total ${lastEnemyAttack.total ?? creatureAttack}`,
+      ].filter(Boolean).join(' · ')
+    : ''
   const defensePending = isPvp && (combat.pvpDefensePending || combat.phase === 'defender-choice')
   // creature fights must never reach a handoff screen, whatever an old save carries
   const pvpHandoff = !isPvp
@@ -154,9 +182,12 @@ export default function CombatModal() {
             <div className="combat-hp hp-hero">
               ❤️ {p.hp}/{eff.maxHp} · ⚡ {p.energy}/{eff.maxEnergy}
             </div>
-            <div className="combat-hp hp-hero dice-pools" title="Ranged volley strikes first (4+ hits) · melee clash (4+ hits) · guard blocks (5+)">
-              🏹 {eff.rangedDice} · ⚔ {eff.meleeDice} · 🛡 {eff.defenseDice}
-            </div>
+            <DicePools
+              className="combat-dice-pools"
+              ranged={eff.rangedDice}
+              melee={eff.meleeDice}
+              guard={eff.defenseDice}
+            />
           </div>
           <div className="combat-vs">
             <div className="vs-text">⚔</div>
@@ -169,17 +200,33 @@ export default function CombatModal() {
               className={combat.boss ? 'boss-img' : ''}
             />
             <div className="combatant-name">{foeName}</div>
-            <div
-              className="combat-hp hp-creature"
-              title={isPvp ? 'Ranged (4+) · melee (4+) · guard blocks (5+) · flat armor' : undefined}
-            >
-              {isPvp
-                ? <>❤️ {defender.hp}/{defEff.maxHp} · 🏹 {defEff.rangedDice} · ⚔ {defEff.meleeDice} · 🛡 {defEff.defenseDice}{defEff.armor > 0 && <> · 🪨 {defEff.armor} armor</>}</>
-                : <>❤️ {combat.hp}/{combat.maxHp} · 🎲 {def.dice} (hits {def.hitOn}+)</>}
+            <div className="combat-hp hp-creature">
+              ❤️ {isPvp ? `${defender.hp}/${defEff.maxHp}` : `${combat.hp}/${combat.maxHp}`}
+              {isPvp && defEff.armor > 0 && <> · 🪨 {defEff.armor} armor</>}
             </div>
-            {combat.threat > 0 && (
-              <div className="creature-trait threat-badge" title={`Provoked: +${combat.threat * GAME.THREAT_DICE} clash dice from escaped or won fights`}>
-                😡 Provoked +{combat.threat * GAME.THREAT_DICE}
+            {isPvp ? (
+              <DicePools
+                className="combat-dice-pools"
+                ranged={defEff.rangedDice}
+                melee={defEff.meleeDice}
+                guard={defEff.defenseDice}
+              />
+            ) : (
+              <div className="enemy-fixed-stats" aria-label={`Threat ${creatureThreat} plus, fixed Attack ${creatureAttack}, fixed Armor ${creatureArmor}`}>
+                <span className="enemy-stat enemy-stat-threat" title="Every hero die must meet this target">
+                  ☠ Threat <strong>{creatureThreat}+</strong>
+                </span>
+                <span className="enemy-stat enemy-stat-attack" title="Fixed retaliation before Guard and hero Armor">
+                  ⚔ Attack <strong>{creatureAttack}</strong>
+                </span>
+                <span className="enemy-stat enemy-stat-armor" title="Automatically soaks this many incoming hits each round">
+                  🪨 Armor <strong>{creatureArmor}</strong>
+                </span>
+              </div>
+            )}
+            {!isPvp && provoked > 0 && (
+              <div className="creature-trait threat-badge" title={`Provoked ${provoked}/${provokedMax}: +${provokedAttack} fixed Attack after an escape or hero defeat`}>
+                😡 Provoked {provoked}/{provokedMax} · +{provokedAttack} Attack
               </div>
             )}
             {traitName && (
@@ -188,58 +235,104 @@ export default function CombatModal() {
               </div>
             )}
             {(combat.minions?.length || 0) > 0 && (
-              <div className="minion-row" title={`${combat.minionName} — each adds +${combat.minionDice} clash die while alive; your hits strike them first`}>
+              <div className="minion-row" title={`${combat.minionName} — each living minion adds +${minionAttack} fixed Attack; your hits strike them first`}>
                 {combat.minions.map((m, i) => (
                   <span key={i} className={`minion-chip ${m.hp <= 0 ? 'minion-dead' : ''}`}>
                     <img src={minionArt(combat.minionId)} alt={combat.minionName} />
                     <span className="minion-hp">{Math.max(0, m.hp)}/{combat.minionMaxHp}</span>
                   </span>
                 ))}
+                <span className="minion-attack">+{livingMinions * minionAttack} Attack</span>
               </div>
             )}
           </div>
         </div>
 
-        {(combat.lastRangedRolls || combat.lastHeroRolls || combat.lastCreatureRolls || combat.lastDefenseRolls) && (
+        {(combat.lastRangedRolls || combat.lastHeroRolls || (isPvp && (combat.lastCreatureRolls || combat.lastDefenderDefenseRolls)) || combat.lastDefenseRolls || lastEnemyAttack) && (
           <div className="dice-rows">
             {combat.lastRangedRolls && (
               <div className="dice-row">
                 <span className="dice-label">🏹 Volley:</span>
                 {combat.lastRangedRolls.map((v, i) => (
-                  <Die key={`${combat.rollId}-r${i}`} value={v} hitOn={4} critFrom={combat.lastCritOn5 ? 5 : 6} delay={i * 70} variant="ranged" />
+                  <Die key={`${combat.rollId}-r${i}`} value={v} hitOn={isPvp ? 4 : creatureThreat} critFrom={combat.lastCritOn5 ? 5 : 6} delay={i * 70} variant="ranged" />
                 ))}
-                {combat.lastAutoHits > 0 && <span className="auto-hits">+{combat.lastAutoHits} auto</span>}
+                {combat.lastAutoHits > 0 && autoHitPhase === 'ranged' && <span className="auto-hits">+{combat.lastAutoHits} auto</span>}
               </div>
             )}
             {combat.lastHeroRolls && (
               <div className="dice-row">
                 <span className="dice-label">⚔ Clash:</span>
                 {combat.lastHeroRolls.map((v, i) => (
-                  <Die key={`${combat.rollId}-${i}`} value={v} hitOn={4} critFrom={combat.lastCritOn5 ? 5 : 6} delay={i * 70} variant="melee" />
+                  <Die key={`${combat.rollId}-${i}`} value={v} hitOn={isPvp ? 4 : creatureThreat} critFrom={combat.lastCritOn5 ? 5 : 6} delay={i * 70} variant="melee" />
                 ))}
-                {!combat.lastRangedRolls && combat.lastAutoHits > 0 && <span className="auto-hits">+{combat.lastAutoHits} auto</span>}
+                {combat.lastAutoHits > 0 && autoHitPhase === 'melee' && <span className="auto-hits">+{combat.lastAutoHits} auto</span>}
               </div>
             )}
-            {combat.lastCreatureRolls && (
+            {isPvp && combat.lastCreatureRolls && (
               <div className="dice-row">
-                <span className="dice-label">Foe:</span>
+                <span className="dice-label">⚔ Def. Attack:</span>
                 {combat.lastCreatureRolls.map((v, i) => (
                   <Die
                     key={`${combat.rollId}-c${i}`}
                     value={v}
-                    hitOn={isPvp ? 4 : def.hitOn}
-                    critFrom={isPvp ? (defEff?.critOn5 ? 5 : 6) : 99}
+                    hitOn={4}
+                    critFrom={defEff?.critOn5 ? 5 : 6}
                     delay={i * 70}
                   />
                 ))}
               </div>
             )}
+            {isPvp && combat.lastDefenderDefenseRolls && (
+              <div className="dice-row" aria-label="Defender Guard dice">
+                <span className="dice-label">🛡 Def. Guard:</span>
+                {combat.lastDefenderDefenseRolls.map((v, i) => (
+                  <Die key={`${combat.rollId}-dg${i}`} value={v} hitOn={5} delay={i * 70} variant="defense" />
+                ))}
+              </div>
+            )}
             {combat.lastDefenseRolls && (
               <div className="dice-row">
-                <span className="dice-label">🛡 Guard:</span>
+                <span className="dice-label">🛡 {isPvp ? 'Atk. Guard:' : 'Guard:'}</span>
                 {combat.lastDefenseRolls.map((v, i) => (
-                  <Die key={`${combat.rollId}-d${i}`} value={v} hitOn={5} delay={i * 70} variant="defense" />
+                  <Die key={`${combat.rollId}-d${i}`} value={v} hitOn={isPvp ? 5 : creatureThreat} delay={i * 70} variant="defense" />
                 ))}
+              </div>
+            )}
+            {lastEnemyAttack && (
+              <div className="enemy-resolution" title={enemyAttackTitle}>
+                <span className="dice-label">Creature:</span>
+                {lastEnemyAttack.skipped ? (
+                  <>
+                    <span className="enemy-resolution-part enemy-resolution-attack">⚔ {lastEnemyAttack.total ?? creatureAttack}</span>
+                    <strong className="log-good">prevented</strong>
+                  </>
+                ) : lastEnemyAttack.absorbed ? (
+                  <>
+                    <span className="enemy-resolution-part enemy-resolution-attack">⚔ {lastEnemyAttack.total ?? creatureAttack}</span>
+                    <strong className="log-good">Ward absorbed · 0 damage</strong>
+                  </>
+                ) : (
+                  <>
+                    <span className="enemy-resolution-part enemy-resolution-attack">⚔ {lastEnemyAttack.total ?? creatureAttack}</span>
+                    <span aria-hidden="true">−</span>
+                    {lastEnemyAttack.redGuard != null || lastEnemyAttack.greenGuard != null ? (
+                      <span className="enemy-guard-breakdown">
+                        <span className="enemy-resolution-part pool-melee" title="Attack cancelled by red melee successes">⚔ {lastEnemyAttack.redGuard ?? 0}</span>
+                        <span aria-hidden="true">+</span>
+                        <span className="enemy-resolution-part pool-defense" title="Attack blocked by green guard successes">🛡 {lastEnemyAttack.greenGuard ?? 0}</span>
+                      </span>
+                    ) : (
+                      <span className="enemy-resolution-part pool-defense">🛡 {lastEnemyAttack.guard ?? 0}</span>
+                    )}
+                    <span aria-hidden="true">−</span>
+                    <span className="enemy-resolution-part enemy-resolution-armor">🪨 {lastEnemyAttack.armor ?? 0}</span>
+                    <span aria-hidden="true">=</span>
+                    <strong className={lastEnemyAttack.damage > 0 ? 'log-bad' : 'log-good'}>
+                      {lastEnemyAttack.damage ?? 0} damage
+                    </strong>
+                  </>
+                )}
+                <small className="enemy-resolution-breakdown">{enemyAttackTitle}</small>
               </div>
             )}
           </div>
@@ -310,7 +403,9 @@ export default function CombatModal() {
               ))}
             </div>
             <div className="combat-buttons">
-              <button className="btn-primary" data-testid="combat-roll" disabled={combat.rolling} onClick={roll}>🎲 Roll Attack</button>
+              <button className="btn-primary" data-testid="combat-roll" disabled={combat.rolling} onClick={roll}>
+                {isPvp ? '🎲 Roll Duel Dice' : '🎲 Roll Hero Dice'}
+              </button>
               <button className="btn-secondary" disabled={combat.rolling} onClick={combatFlee}>
                 {isPvp ? '🏳 Withdraw' : '🏃 Flee'}
               </button>

@@ -169,6 +169,22 @@ function validatePlayer(player) {
   })
 }
 
+const makePveTelemetry = () => ({
+  creatureFightsStarted: 0,
+  creatureWins: 0,
+  creatureFlees: 0,
+  creatureHeroDeaths: 0,
+  volleyWins: 0,
+  combatRounds: 0,
+  hpLost: 0,
+  fixedAttackRounds: 0,
+  zeroDamageFixedAttackRounds: 0,
+  bossAttempts: 0,
+  bossWins: 0,
+  bossFlees: 0,
+  bossHeroDeaths: 0,
+})
+
 function playOneGame({ gameIndex, playerCount, runSeed }) {
     const botRng = mulberry32(hashSeed(`${runSeed}:bot`))
     const roster = makeRoster(playerCount, botRng)
@@ -178,6 +194,32 @@ function playOneGame({ gameIndex, playerCount, runSeed }) {
     })
     let steps = 0
     let duelStarts = 0
+    const pve = makePveTelemetry()
+    const resolvedPveCombats = new Set()
+
+    const recordPveStart = (combat) => {
+      if (!combat || combat.pvp) return
+      if (combat.boss) pve.bossAttempts++
+      else pve.creatureFightsStarted++
+    }
+
+    const recordPveOutcome = (combat) => {
+      if (!combat || combat.pvp || !combat.over || resolvedPveCombats.has(combat.id)) return
+      resolvedPveCombats.add(combat.id)
+      if (combat.heroWon) {
+        if (combat.lastEnemyAttack == null) pve.volleyWins++
+        if (combat.boss) pve.bossWins++
+        else pve.creatureWins++
+      }
+      if (combat.fled) {
+        if (combat.boss) pve.bossFlees++
+        else pve.creatureFlees++
+      }
+      if (combat.heroDied) {
+        if (combat.boss) pve.bossHeroDeaths++
+        else pve.creatureHeroDeaths++
+      }
+    }
 
     while (useGame.getState().screen === 'game' && steps < MAX_STEPS) {
       steps++
@@ -204,6 +246,7 @@ function playOneGame({ gameIndex, playerCount, runSeed }) {
           continue
         }
         if (state.combat.over) {
+          recordPveOutcome(state.combat)
           state.closeCombat()
           continue
         }
@@ -222,6 +265,7 @@ function playOneGame({ gameIndex, playerCount, runSeed }) {
         const player = state.players[state.combat.playerIdx]
         if (player.hp <= 2 && botRng() < 0.8) {
           state.combatFlee()
+          recordPveOutcome(useGame.getState().combat)
           continue
         }
         if (player.consumables.length && botRng() < 0.3) {
@@ -241,7 +285,24 @@ function playOneGame({ gameIndex, playerCount, runSeed }) {
         const abilityId = abilities.length && botRng() < 0.45
           ? rnd(abilities, botRng).id
           : null
+        const combatId = state.combat.id
+        const rollId = state.combat.rollId || 0
         state.combatRound(abilityId, state.combat.round)
+        const resolvedState = useGame.getState()
+        const resolvedCombat = resolvedState.combat
+        if (
+          resolvedCombat?.id === combatId && !resolvedCombat.pvp &&
+          (resolvedCombat.rollId || 0) > rollId
+        ) {
+          pve.combatRounds++
+          const enemyAttack = resolvedCombat.lastEnemyAttack
+          if (enemyAttack) {
+            pve.fixedAttackRounds++
+            pve.hpLost += Math.max(0, enemyAttack.damage || 0)
+            if ((enemyAttack.damage || 0) === 0) pve.zeroDamageFixedAttackRounds++
+          }
+          recordPveOutcome(resolvedCombat)
+        }
         continue
       }
       if (state.celebrations.length) {
@@ -273,6 +334,7 @@ function playOneGame({ gameIndex, playerCount, runSeed }) {
 
       if (!state.actionUsed && bossHere && player.hp > 5) {
         state.startCombat(true)
+        recordPveStart(useGame.getState().combat)
         continue
       }
       const enemiesHere = region.town
@@ -290,6 +352,7 @@ function playOneGame({ gameIndex, playerCount, runSeed }) {
       }
       if (!state.actionUsed && creature && player.hp > 4 && botRng() < 0.85) {
         state.startCombat(false)
+        recordPveStart(useGame.getState().combat)
         continue
       }
       if (region.town && player.gold >= 3 && botRng() < 0.55) {
@@ -345,6 +408,7 @@ function playOneGame({ gameIndex, playerCount, runSeed }) {
       reason: end.winner.slayer ? 'boss-kill' : 'victory-points',
       duelStarts,
       duelWins: end.players.reduce((total, player) => total + (player.pvpWins || 0), 0),
+      pve,
       heroes: end.players.map((player) => ({ heroId: player.heroId, faction: player.faction })),
     }
 }
@@ -363,9 +427,11 @@ function report(label, expectedGames, results) {
   const wins = { accord: 0, dominion: 0, draw: 0 }
   const reasons = { 'boss-kill': 0, 'victory-points': 0 }
   const heroStats = {}
+  const pve = makePveTelemetry()
   for (const result of results) {
     wins[result.winner] = (wins[result.winner] || 0) + 1
     reasons[result.reason] = (reasons[result.reason] || 0) + 1
+    for (const key of Object.keys(pve)) pve[key] += result.pve[key]
     for (const hero of result.heroes) {
       heroStats[hero.heroId] ||= { games: 0, factionWins: 0 }
       heroStats[hero.heroId].games++
@@ -382,6 +448,21 @@ function report(label, expectedGames, results) {
     `  endings: boss ${reasons['boss-kill']}, points ${reasons['victory-points']}; ` +
       `avg rounds ${average(results, 'rounds')}; avg duels started ${average(results, 'duelStarts')}; ` +
       `avg duel wins ${average(results, 'duelWins')}`
+  )
+  const totalFights = pve.creatureFightsStarted + pve.bossAttempts
+  const totalWins = pve.creatureWins + pve.bossWins
+  console.log(
+    `  PvE: creature fights ${pve.creatureFightsStarted}, wins ${pve.creatureWins} ` +
+      `(${percentage(pve.creatureWins, pve.creatureFightsStarted)}), flees ${pve.creatureFlees}, ` +
+      `hero deaths ${pve.creatureHeroDeaths}; boss attempts ${pve.bossAttempts}, ` +
+      `wins ${pve.bossWins} (${percentage(pve.bossWins, pve.bossAttempts)}), ` +
+      `flees ${pve.bossFlees}, hero deaths ${pve.bossHeroDeaths}`
+  )
+  console.log(
+    `  PvE rounds ${pve.combatRounds} (${totalFights ? (pve.combatRounds / totalFights).toFixed(2) : '0.00'}/fight), ` +
+      `HP lost ${pve.hpLost}; volley wins ${pve.volleyWins} (${percentage(pve.volleyWins, totalWins)} of wins); ` +
+      `zero-damage fixed Attacks ${pve.zeroDamageFixedAttackRounds}/${pve.fixedAttackRounds} ` +
+      `(${percentage(pve.zeroDamageFixedAttackRounds, pve.fixedAttackRounds)})`
   )
   const heroes = Object.entries(heroStats)
     .sort(([left], [right]) => left.localeCompare(right))

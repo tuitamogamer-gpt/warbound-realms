@@ -205,14 +205,14 @@ export default function RegionTile({
             {creatureDef && (
               <div className="tip3d-creature">
                 ⚔ {creatureSlot.elite ? '👑 Elite ' : ''}{creatureDef.name} — ❤️ {creatureSlot.hp}/
-                {creatureDef.hp + (creatureSlot.elite ? GAME.ELITE_BONUS_HP : 0)} · 🎲 {creatureDef.dice} dice (hits {creatureDef.hitOn}+)
+                {creatureDef.hp + (creatureSlot.elite ? GAME.ELITE_BONUS_HP : 0)} · ☠ Threat {creatureDef.threat ?? creatureDef.hitOn ?? 4}+ · ⚔ Attack {creatureDef.attack ?? creatureDef.dice ?? 0} · 🪨 Armor {creatureDef.armor ?? creatureDef.trait?.armor ?? 0}
                 {!creatureDef.boss && ` · +${creatureDef.xp + (creatureSlot.elite ? GAME.ELITE_BONUS_REWARD : 0)} XP · +${creatureDef.gold + (creatureSlot.elite ? GAME.ELITE_BONUS_REWARD : 0)} gold · +${creatureDef.vp + (creatureSlot.elite ? GAME.ELITE_BONUS_REWARD : 0)} VP`}
                 {creatureDef.trait && <div>◆ {creatureDef.trait.name}: {creatureDef.trait.desc}</div>}
-                {(creatureSlot.threat || 0) > 0 && (
-                  <div style={{ color: '#ff8ba0' }}>😡 Provoked: +{creatureSlot.threat} clash dice</div>
+                {(creatureSlot.provoked ?? creatureSlot.threat ?? 0) > 0 && (
+                  <div style={{ color: '#ff8ba0' }}>😡 Provoked: +{(creatureSlot.provoked ?? creatureSlot.threat) * (GAME.PROVOKED_ATTACK ?? 1)} fixed Attack</div>
                 )}
                 {creatureDef.minions && (
-                  <div>⚑ {creatureDef.minions.name} ×{creatureDef.minions.count} fight alongside it</div>
+                  <div>⚑ {creatureDef.minions.name} ×{creatureDef.minions.count} · each adds +{creatureDef.minions.attack ?? creatureDef.minions.dice ?? 0} Attack while alive</div>
                 )}
               </div>
             )}

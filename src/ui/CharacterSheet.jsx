@@ -7,10 +7,11 @@ import { QUESTS } from '../data/quests'
 import { FACTIONS } from '../data/constants'
 import { effStats, xpForNextLevel } from '../game/rules'
 import { sfx } from '../game/sfx'
+import DicePools from './DicePools'
 import ModalShell from './ModalShell'
 
 const SLOT_META = {
-  weapon: { label: 'Weapon', icon: '🗡️', hint: 'Attack dice & strikes' },
+  weapon: { label: 'Weapon', icon: '🗡️', hint: 'Favored attack-pool dice & strikes' },
   armor: { label: 'Armor', icon: '🛡️', hint: 'Reduces damage taken' },
   trinket: { label: 'Trinket', icon: '💍', hint: 'Passive bonuses' },
 }
@@ -92,11 +93,14 @@ export default function CharacterSheet() {
           {/* middle column: stats + equipment */}
           <div className="sheet-col">
             <div className="sheet-section-title">Attributes</div>
+            <div className="sheet-dice-summary">
+              <span className="sheet-dice-title">Hero dice pools</span>
+              <DicePools ranged={eff.rangedDice} melee={eff.meleeDice} guard={eff.defenseDice} />
+            </div>
             <div className="sheet-stats">
               <div><b>❤️ {player.hp}/{eff.maxHp}</b><span>Health</span></div>
               <div><b>⚡ {player.energy}/{eff.maxEnergy}</b><span>Energy</span></div>
-              <div><b>🎲 {eff.dice}</b><span>Attack dice</span></div>
-              <div><b>🛡 {eff.armor}</b><span>Armor</span></div>
+              <div><b>🪨 {eff.armor}</b><span>Flat armor</span></div>
               <div><b>👣 {eff.move}</b><span>Movement</span></div>
               <div><b>💰 +{eff.goldPerKill}</b><span>Gold per kill</span></div>
             </div>

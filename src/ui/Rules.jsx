@@ -26,16 +26,17 @@ export default function Rules({ onClose }) {
             <li>You cannot enter the enemy capital. Blackspire is sealed until Vhalrax awakens.</li>
           </ul>
 
-          <h3>Combat — three kinds of dice</h3>
+          <h3>Combat — heroes roll, creatures threaten</h3>
           <ul>
-            <li>Your class splits its dice into <b>🏹 ranged</b>, <b>⚔ melee</b> and <b>🛡 guard</b> pools. Earned dice (levels, items, talents) — and any in-combat dice bonuses or penalties (abilities, elixirs, events) — go to your class's favored pool.</li>
-            <li><b>Phase 1 — the volley</b>: ranged dice fire first (4–5 = 1 hit, 6 = 2 hits). Kill the enemy here and it never strikes back.</li>
-            <li><b>Phase 2 — the clash</b>: melee dice (4–5 = 1 hit, 6 = 2) and the enemy strike <b>simultaneously</b> — even a killing melee blow still costs you its final strike.</li>
-            <li>Your <b>🛡 guard dice</b> block incoming hits on 5+, on top of flat armor. Creatures hit on 5+ (Vhalrax on 4+); enemy heroes in duels roll like you do (4+ hits, 6s crit).</li>
+            <li>Every hero can carry all three color-coded pools: <b>blue 🏹 ranged</b>, <b>red ⚔ melee</b> and <b>green 🛡 guard</b>. Earned attack dice (levels, items, talents) and combat bonuses go to the hero's favored attack pool.</li>
+            <li>Every creature card shows three fixed values: <b>Threat</b> is the target all three of your hero dice colors test against, <b>Attack</b> is its guaranteed retaliation, and <b>Armor</b> automatically soaks that many incoming hits each round. Creatures never roll dice.</li>
+            <li><b>Phase 1 — the volley</b>: blue ranged dice fire first. Meet the creature's Threat for 1 hit; a 6 is a 2-hit critical. Kill it here and it never strikes back.</li>
+            <li><b>Phase 2 — the clash</b>: every red melee success blunts the creature's fixed Attack by one, then all red successes become delayed melee hits (after the creature's Armor). The clash is simultaneous, so a creature may still wound you as it falls.</li>
+            <li>Each green 🛡 die that meets the creature's Threat blocks one point of Attack. Red clash guard and green guard combine before flat hero Armor reduces whatever remains. In hero duels, guard succeeds on 5+.</li>
             <li>Before rolling you may use <b>one ability</b> (costs energy) and up to <b>one consumable</b>.</li>
-            <li>Great beasts fight with <b>⚑ minions</b>: your hits strike the minions first, and each living minion adds a clash die — a sharp volley clears them before they matter.</li>
+            <li>Great beasts fight with <b>⚑ minions</b>: your hits strike the minions first, and each living minion adds fixed Attack — a sharp volley clears them before they matter.</li>
             <li>Creature <b>traits</b> change the normal rhythm — inspect the region or combat card before committing.</li>
-            <li>You may <b>flee</b> between rounds — normal creatures keep their wounds but grow <b>😡 provoked</b> (+1 clash die, up to +2, also when they fell a hero), while Vhalrax regenerates 5 health, grows provoked, and that healed damage no longer counts toward faction contribution.</li>
+            <li>You may <b>flee</b> between rounds — normal creatures keep their wounds but grow <b>😡 provoked</b> (+1 fixed Attack, up to +2, also when they fell a hero), while Vhalrax regenerates 5 health, grows provoked, and that healed damage no longer counts toward faction contribution.</li>
             <li>If you die: you lose half your gold and return to your capital, restored, on your next turn.</li>
           </ul>
 
@@ -53,7 +54,7 @@ export default function Rules({ onClose }) {
           <h3>Duels (PvP)</h3>
           <ul>
             <li>From <b>round 1</b>, sharing a region with an enemy hero lets you spend your action to <b>duel</b> them.</li>
-            <li>Duels use the same volley/clash phases: your ranged dice fire first — a volley kill ends the duel before they can answer — then in the clash the defender strikes back with their ranged and melee dice combined. Guard dice and armor block on both sides.</li>
+            <li>Duels are hero against hero, so <b>both heroes still roll</b>. They use the same colored volley/clash pools: the attacker's ranged dice fire first, then the defender answers in the clash. The defender's green Guard roll is shared across both attack phases; the attacker's Guard protects against the counterattack. Flat armor protects both sides.</li>
             <li>The defender secretly chooses a response before the roll: brace, counter, use an ability or consumable, or withdraw.</li>
             <li>Win a duel: <b>+2 VP, +2 XP</b>, and you loot the gold the loser drops. The loser retreats to their capital.</li>
             <li>If both heroes fall in the same clash, the duel has no victor — no VP, XP or loot for either side.</li>

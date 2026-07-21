@@ -5,6 +5,7 @@ import { HEROES } from '../src/data/heroes'
 import { trainableForHero } from '../src/data/abilities'
 import { talentsForLevel } from '../src/data/talents'
 import { selCurrentPlayer, useGame } from '../src/game/store'
+import { threatBlocks, threatHits } from '../src/game/dice'
 
 const TEST_SEED = 0x2cafe005
 
@@ -121,8 +122,31 @@ describe('treasure caches', () => {
 })
 
 describe('three-color dice combat', () => {
-  it('a ranged-volley kill draws no retaliation', () => {
-    startGame(NEW_HERO_ROSTER) // both new heroes are ranged-primary (2 ranged dice)
+  it('gives every hero a non-empty blue, red, and green pool', () => {
+    for (const hero of Object.values(HEROES)) {
+      expect(hero.diceProfile.ranged, `${hero.id} blue pool`).toBeGreaterThan(0)
+      expect(hero.diceProfile.melee, `${hero.id} red pool`).toBeGreaterThan(0)
+      expect(hero.diceProfile.defense, `${hero.id} green pool`).toBeGreaterThan(0)
+    }
+  })
+
+  it('scores every color against Threat without letting crits bypass it', () => {
+    expect(threatHits([3, 4, 5, 6], 4)).toBe(4)
+    expect(threatHits([4, 5, 6], 5)).toBe(3)
+    expect(threatHits([5], 5, true)).toBe(2)
+    expect(threatHits([5], 6, true)).toBe(0)
+    expect(threatBlocks([3, 4, 5, 6], 5)).toBe(2)
+  })
+
+  it('caps every creature at one point of fixed Armor', () => {
+    for (const creature of Object.values(CREATURES)) {
+      expect(creature.armor, `${creature.id} fixed Armor`).toBeGreaterThanOrEqual(0)
+      expect(creature.armor, `${creature.id} fixed Armor`).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('a blue-volley kill skips the creature fixed Attack', () => {
+    startGame(NEW_HERO_ROSTER) // both heroes are blue-primary
     useGame.setState((state) => {
       const player = selCurrentPlayer(state)
       player.region = 'silverwood'
@@ -136,22 +160,25 @@ describe('three-color dice combat', () => {
     })
     useGame.getState().startCombat(false)
     const hpBefore = selCurrentPlayer(useGame.getState()).hp
-    // shrink the wolf to volley range: any single ranged hit will fell it
+    // Route the hero's automatic hits through their blue-primary pool.
     useGame.setState((state) => {
       state.combat.hp = 1
     })
-    useGame.getState().combatRound(null, 1)
+    const ability = selCurrentPlayer(useGame.getState()).abilities.includes('triple_volley')
+      ? 'triple_volley'
+      : 'chain_lightning'
+    useGame.getState().combatRound(ability, 1)
     const after = useGame.getState()
-    if (after.combat.heroWon && after.combat.lastHeroRolls === null) {
-      // volley kill: no clash rolls, no damage taken
-      expect(selCurrentPlayer(after).hp).toBe(hpBefore)
-      expect(after.combat.lastCreatureRolls).toBeNull()
-    }
-    // whatever the dice did, the fight must have progressed legally
-    expect(after.combat.round === 1 || after.combat.round === 2 || after.combat.over).toBe(true)
+
+    expect(after.combat.over).toBe(true)
+    expect(after.combat.heroWon).toBe(true)
+    expect(after.combat.lastAutoHitPhase).toBe('ranged')
+    expect(after.combat.lastEnemyAttack).toBeNull()
+    expect(after.combat.lastCreatureRolls).toBeNull()
+    expect(selCurrentPlayer(after).hp).toBe(hpBefore)
   })
 
-  it('minions absorb hits before the main enemy and add clash dice', () => {
+  it('minions absorb hits before the main enemy and add fixed Attack', () => {
     startGame(NEW_HERO_ROSTER)
     useGame.setState((state) => {
       const player = selCurrentPlayer(state)
@@ -169,6 +196,7 @@ describe('three-color dice combat', () => {
     const minionDef = CREATURES.frost_wyrm.minions
     expect(combat.minions).toHaveLength(minionDef.count)
     expect(combat.minions[0].hp).toBe(minionDef.hp)
+    expect(combat.minionAttack).toBe(minionDef.attack)
 
     // 3 auto hits: the Rime Spawn falls first, the remainder bites the wyrm
     const ability = selCurrentPlayer(useGame.getState()).abilities.includes('triple_volley')
@@ -181,7 +209,7 @@ describe('three-color dice combat', () => {
     expect(after.hp).toBeLessThanOrEqual(CREATURES.frost_wyrm.hp - (3 - minionDef.hp * minionDef.count))
   })
 
-  it('fleeing provokes the creature (threat rises, capped)', () => {
+  it('fleeing carries a Provoked stack into the next fight', () => {
     startGame(NEW_HERO_ROSTER)
     useGame.setState((state) => {
       const player = selCurrentPlayer(state)
@@ -196,7 +224,7 @@ describe('three-color dice combat', () => {
       state.combat.rolling = false
     })
     useGame.getState().combatFlee()
-    expect(useGame.getState().creatures.silverwood.threat).toBe(1)
+    expect(useGame.getState().creatures.silverwood.provoked).toBe(1)
 
     // the next fight carries the provocation snapshot
     useGame.setState((state) => {
@@ -204,7 +232,8 @@ describe('three-color dice combat', () => {
       state.combat = null
     })
     useGame.getState().startCombat(false)
-    expect(useGame.getState().combat.threat).toBe(1)
+    expect(useGame.getState().combat.provoked).toBe(1)
+    expect(useGame.getState().combat.threat).toBeUndefined()
   })
 })
 

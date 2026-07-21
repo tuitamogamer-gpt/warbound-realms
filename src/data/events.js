@@ -4,8 +4,8 @@ export const EVENTS = {
   blood_moon: {
     id: 'blood_moon',
     name: 'Blood Moon',
-    desc: 'All creatures roll +1 die this round.',
-    mod: { creatureDice: 1 },
+    desc: 'All creatures gain +1 fixed Attack this round.',
+    mod: { creatureAttack: 1 },
   },
   merchant_caravan: {
     id: 'merchant_caravan',

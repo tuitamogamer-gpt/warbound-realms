@@ -13,6 +13,7 @@ import { TALENTS } from '../data/talents'
 import { ABILITIES, abilityArt, maxAbilitySlots } from '../data/abilities'
 import { sfx, isMuted, setMuted } from '../game/sfx'
 import CamControls from './CamControls'
+import DicePools from './DicePools'
 import ModalShell from './ModalShell'
 
 function Bar({ value, max, cls }) {
@@ -67,9 +68,14 @@ function HeroPanel({ player }) {
       </div>
       <Bar value={player.hp} max={eff.maxHp} cls="bar-hp" />
       <Bar value={player.energy} max={eff.maxEnergy} cls="bar-en" />
-      <div className="stat-row">
-        <span title="Attack dice">🎲 {eff.dice}</span>
-        <span title="Armor">🛡 {eff.armor}</span>
+      <DicePools
+        className="hud-dice-pools"
+        ranged={eff.rangedDice}
+        melee={eff.meleeDice}
+        guard={eff.defenseDice}
+      />
+      <div className="stat-row hero-secondary-stats">
+        <span title="Flat armor">🪨 {eff.armor}</span>
         <span title="Movement">👣 {eff.move}</span>
         <span title="Gold">💰 {player.gold}</span>
         <span title="Victory points">🏆 {player.vp} VP</span>
@@ -271,6 +277,7 @@ function RegionInspector() {
   const creatureSlot = useGame((s) => regionId ? s.creatures[regionId] : null)
   const bossSpawned = useGame((s) => s.bossSpawned)
   const bossHp = useGame((s) => s.bossHp)
+  const bossProvoked = useGame((s) => s.bossProvoked ?? s.bossThreat ?? 0)
   const reachableRegionIds = useGame(useShallow(reachableRegions))
   const player = useGame(selCurrentPlayer)
   if (!regionId || !REGIONS[regionId] || !player) return null
@@ -280,9 +287,16 @@ function RegionInspector() {
     : regionId === 'blackspire' && bossSpawned && bossHp > 0
       ? CREATURES.vhalrax
       : null
+  const creatureProvoked = creatureSlot
+    ? (creatureSlot.provoked ?? creatureSlot.threat ?? 0)
+    : creature?.boss ? bossProvoked : 0
   const reachable = reachableRegionIds.includes(regionId)
   const trait = creature?.trait
   const traitName = typeof trait === 'string' ? trait : trait?.name
+  const creatureThreat = creature?.threat ?? creature?.hitOn ?? 4
+  const creatureAttack = creature?.attack ?? creature?.dice ?? 0
+  const creatureArmor = creature?.armor ?? trait?.armor ?? 0
+  const creatureProvokedAttack = creatureProvoked * (GAME.PROVOKED_ATTACK ?? 1)
 
   return (
     <aside className="region-inspector" aria-label={`Selected region: ${region.name}`}>
@@ -294,6 +308,12 @@ function RegionInspector() {
         {creature && (
           <span className="region-creature">
             {trait && typeof trait === 'object' ? trait.icon : '🐾'} {creature.name}{traitName ? ` · ${traitName}` : ''}
+          </span>
+        )}
+        {creature && (
+          <span className="region-creature-stats">
+            ☠ {creatureThreat}+ · ⚔ {creatureAttack} · 🪨 {creatureArmor}
+            {creatureProvoked > 0 && <b> · 😡 +{creatureProvokedAttack} Attack</b>}
           </span>
         )}
       </div>
@@ -481,8 +501,15 @@ function MobileHeroStrip({ player }) {
           <span className="mini-hp" style={{ '--fill': `${(player.hp / eff.maxHp) * 100}%` }}>❤️ {player.hp}/{eff.maxHp}</span>
           <span className="mini-en" style={{ '--fill': `${(player.energy / eff.maxEnergy) * 100}%` }}>⚡ {player.energy}/{eff.maxEnergy}</span>
         </span>
+        <DicePools
+          compact
+          className="mobile-dice-pools"
+          ranged={eff.rangedDice}
+          melee={eff.meleeDice}
+          guard={eff.defenseDice}
+        />
       </span>
-      <span className="mobile-hero-stats">🎲 {eff.dice}<br />🛡 {eff.armor}<br />💰 {player.gold}</span>
+      <span className="mobile-hero-stats">🪨 {eff.armor}<br />💰 {player.gold}</span>
       <span className="mobile-hero-chevron" aria-hidden="true">⌃</span>
     </button>
   )

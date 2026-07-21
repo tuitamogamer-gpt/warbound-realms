@@ -19,6 +19,12 @@ export default function CreatureToken({ regionId, slot, boss = false, reducedMot
   const maxHp = def.hp + (elite ? GAME.ELITE_BONUS_HP : 0)
   const hpFrac = slot.hp / maxHp
   const wounded = slot.hp < maxHp
+  const threat = def.threat ?? def.hitOn ?? 4
+  const attack = def.attack ?? def.dice ?? 0
+  const armor = def.armor ?? def.trait?.armor ?? 0
+  const provoked = slot.provoked ?? slot.threat ?? 0
+  const provokedAttack = provoked * (GAME.PROVOKED_ATTACK ?? 1)
+  const minionAttack = def.minions?.attack ?? def.minions?.dice ?? 0
 
   useFrame(({ clock }) => {
     if (!group.current) return
@@ -96,7 +102,7 @@ export default function CreatureToken({ regionId, slot, boss = false, reducedMot
             </div>
             <div className="tip3d-desc">{def.blurb}</div>
             <div className="tip3d-creature">
-              ❤️ {slot.hp}/{maxHp} · 🎲 {def.dice} dice, hits {def.hitOn}+
+              ❤️ {slot.hp}/{maxHp} · ☠ Threat {threat}+ · ⚔ Attack {attack} · 🪨 Armor {armor}
               {!boss && (
                 <>
                   {' '}· rewards +{def.xp + (elite ? GAME.ELITE_BONUS_REWARD : 0)} XP, +
@@ -106,13 +112,13 @@ export default function CreatureToken({ regionId, slot, boss = false, reducedMot
               )}
             </div>
             {def.trait && <div className="tip3d-trait">◆ {def.trait.name}: {def.trait.desc}</div>}
-            {(slot.threat || 0) > 0 && (
+            {provoked > 0 && (
               <div className="tip3d-trait" style={{ color: '#ff8ba0' }}>
-                😡 Provoked: +{slot.threat} clash dice
+                😡 Provoked: +{provokedAttack} fixed Attack
               </div>
             )}
             {def.minions && (
-              <div className="tip3d-trait">⚑ {def.minions.name} ×{def.minions.count} fight alongside it</div>
+              <div className="tip3d-trait">⚑ {def.minions.name} ×{def.minions.count} · each adds +{minionAttack} Attack while alive</div>
             )}
           </div>
         </Html>

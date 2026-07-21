@@ -3,6 +3,7 @@ import { CREATURES } from '../src/data/creatures'
 import { GAME } from '../src/data/constants'
 import { ITEMS } from '../src/data/items'
 import { selCurrentPlayer, useGame } from '../src/game/store'
+import { effStats } from '../src/game/rules'
 import { nextRandom } from '../src/game/rng'
 
 const ROSTER_2 = [
@@ -19,11 +20,11 @@ const ROSTER_4 = [
 
 const TEST_SEED = 0x1badb002
 
-function seedForRolls(count, accepts) {
+function seedForPattern(predicates) {
   for (let seed = 1; seed < 1_000_000; seed++) {
     let state = seed
     let valid = true
-    for (let index = 0; index < count; index++) {
+    for (const accepts of predicates) {
       const result = nextRandom(state)
       state = result.state
       const face = 1 + Math.floor(result.value * 6)
@@ -35,6 +36,16 @@ function seedForRolls(count, accepts) {
     if (valid) return seed
   }
   throw new Error('could not find a deterministic dice seed')
+}
+
+function seedForRolls(count, accepts) {
+  return seedForPattern(Array.from({ length: count }, () => accepts))
+}
+
+function advanceSeed(seed, count) {
+  let state = seed
+  for (let index = 0; index < count; index++) state = nextRandom(state).state
+  return state
 }
 
 function clearBlockingUi() {
@@ -310,6 +321,193 @@ describe('combat, quests, and inventory invariants', () => {
     expect(useGame.getState().players[1].consumables).toEqual([])
   })
 
+  it('rolls the PvP defender green pool once and shares it across blue and red', () => {
+    startGame()
+    useGame.setState((state) => {
+      state.players[0].region = 'mirefen'
+      state.players[1].region = 'mirefen'
+      state.players[0].items = []
+      state.players[1].items = []
+      state.players[0].armor = 0
+      state.players[1].armor = 0
+      state.actionUsed = false
+      state.eventId = null
+    })
+
+    useGame.getState().startPvp(1)
+    useGame.getState().confirmPvpHandoff()
+    useGame.getState().setPvpDefense('counter')
+    useGame.getState().confirmPvpHandoff()
+
+    const before = useGame.getState()
+    const attacker = before.players[before.combat.playerIdx]
+    const defender = before.players[before.combat.targetIdx]
+    const attackerEff = effStats(attacker)
+    const defenderEff = effStats(defender)
+    const defenderCounterPool = defenderEff.rangedDice + defenderEff.meleeDice + 1
+    const predicates = [
+      ...Array.from({ length: defenderEff.defenseDice }, (_, index) =>
+        index === 0 ? (face) => face >= 5 : (face) => face < 5),
+      ...Array.from({ length: attackerEff.rangedDice }, (_, index) =>
+        index === 0 ? (face) => face >= 4 && face < 6 : (face) => face < 4),
+      ...Array.from({ length: attackerEff.meleeDice }, (_, index) =>
+        index === 0 ? (face) => face >= 4 && face < 6 : (face) => face < 4),
+      ...Array.from({ length: defenderCounterPool }, () => (face) => face < 4),
+      ...Array.from({ length: attackerEff.defenseDice }, () => () => true),
+    ]
+    useGame.setState((state) => {
+      state.rngState = seedForPattern(predicates)
+    })
+
+    const defenderHp = defender.hp
+    useGame.getState().combatRound(null, 1)
+
+    const after = useGame.getState()
+    expect(after.combat.lastDefenderDefenseRolls).toHaveLength(defenderEff.defenseDice)
+    expect(after.combat.lastDefenderDefenseRolls.filter((face) => face >= 5)).toHaveLength(1)
+    // The single green guard stops blue; it is spent, so the red hit lands.
+    expect(after.players[after.combat.targetIdx].hp).toBe(defenderHp - 1)
+  })
+
+  it('resolves fixed creature Attack without consuming a foe roll', () => {
+    startGame()
+    configureCreatureCombat({ defId: 'bandit_marauder' })
+    const before = useGame.getState()
+    const player = before.players[before.combat.playerIdx]
+    const effective = effStats(player)
+    const heroRollCount = effective.rangedDice + effective.meleeDice + effective.defenseDice
+    const seed = seedForRolls(heroRollCount, (face) => face === 1)
+    const hpBefore = player.hp
+    useGame.setState((state) => {
+      state.rngState = seed
+    })
+
+    useGame.getState().combatRound(null, 1)
+
+    const after = useGame.getState()
+    const attack = after.combat.lastEnemyAttack
+    expect(after.rngState).toBe(advanceSeed(seed, heroRollCount))
+    expect(after.combat.lastCreatureRolls).toBeNull()
+    expect(attack.total).toBe(CREATURES.bandit_marauder.attack)
+    expect(after.players[after.combat.playerIdx].hp).toBe(hpBefore - attack.damage)
+  })
+
+  it('lets a blue success kill before fixed Attack resolves', () => {
+    startGame()
+    configureCreatureCombat({ defId: 'gnarlwood_wolf', hp: 1 })
+    const before = useGame.getState()
+    const player = before.players[before.combat.playerIdx]
+    const effective = effStats(player)
+    const threat = CREATURES.gnarlwood_wolf.threat
+    const predicates = [
+      ...Array.from({ length: effective.rangedDice }, (_, index) =>
+        index === 0 ? (face) => face >= threat : (face) => face < threat),
+      ...Array.from({ length: effective.meleeDice }, () => (face) => face < threat),
+      ...Array.from({ length: effective.defenseDice }, () => (face) => face < threat),
+    ]
+    const hpBefore = player.hp
+    useGame.setState((state) => {
+      state.rngState = seedForPattern(predicates)
+    })
+
+    useGame.getState().combatRound(null, 1)
+
+    const after = useGame.getState()
+    expect(after.combat.heroWon).toBe(true)
+    expect(after.combat.lastEnemyAttack).toBeNull()
+    expect(after.combat.lastCreatureRolls).toBeNull()
+    expect(after.players[after.combat.playerIdx].hp).toBe(hpBefore)
+  })
+
+  it('uses a red success as guard before dealing its delayed damage', () => {
+    startGame()
+    configureCreatureCombat({ defId: 'mire_creeper' })
+    const before = useGame.getState()
+    const player = before.players[before.combat.playerIdx]
+    const effective = effStats(player)
+    const threat = CREATURES.mire_creeper.threat
+    const predicates = [
+      ...Array.from({ length: effective.rangedDice }, () => (face) => face < threat),
+      ...Array.from({ length: effective.meleeDice }, (_, index) =>
+        index === 0 ? (face) => face === 6 : (face) => face < threat),
+      ...Array.from({ length: effective.defenseDice }, () => (face) => face < threat),
+    ]
+    useGame.setState((state) => {
+      const actor = state.players[state.combat.playerIdx]
+      actor.armor = 0
+      actor.items = []
+      state.rngState = seedForPattern(predicates)
+    })
+    const hpBefore = useGame.getState().players[before.combat.playerIdx].hp
+
+    useGame.getState().combatRound(null, 1)
+
+    const after = useGame.getState()
+    expect(after.combat.lastEnemyAttack.redGuard).toBe(1)
+    expect(after.combat.lastEnemyAttack.greenGuard).toBe(0)
+    expect(after.combat.lastEnemyAttack.damage).toBe(1)
+    expect(after.players[after.combat.playerIdx].hp).toBe(hpBefore - 1)
+    // One successful red die guards once, then its critical deals two delayed
+    // hits; fixed Armor absorbs one of those hits.
+    expect(after.combat.hp).toBe(CREATURES.mire_creeper.hp - 1)
+  })
+
+  it('uses green successes as guard against fixed Attack', () => {
+    startGame()
+    configureCreatureCombat({ defId: 'bandit_marauder' })
+    const before = useGame.getState()
+    const player = before.players[before.combat.playerIdx]
+    const effective = effStats(player)
+    const threat = CREATURES.bandit_marauder.threat
+    const predicates = [
+      ...Array.from({ length: effective.rangedDice }, () => (face) => face < threat),
+      ...Array.from({ length: effective.meleeDice }, () => (face) => face < threat),
+      ...Array.from({ length: effective.defenseDice }, (_, index) =>
+        index === 0 ? (face) => face >= threat : (face) => face < threat),
+    ]
+    useGame.setState((state) => {
+      const actor = state.players[state.combat.playerIdx]
+      actor.armor = 0
+      actor.items = []
+      state.rngState = seedForPattern(predicates)
+    })
+    const hpBefore = useGame.getState().players[before.combat.playerIdx].hp
+
+    useGame.getState().combatRound(null, 1)
+
+    const after = useGame.getState()
+    expect(after.combat.lastEnemyAttack.redGuard).toBe(0)
+    expect(after.combat.lastEnemyAttack.greenGuard).toBe(1)
+    expect(after.combat.lastEnemyAttack.damage).toBe(CREATURES.bandit_marauder.attack - 1)
+    expect(after.players[after.combat.playerIdx].hp).toBe(
+      hpBefore - after.combat.lastEnemyAttack.damage,
+    )
+  })
+
+  it('spends fixed enemy Armor once across the blue and red pools', () => {
+    startGame()
+    configureCreatureCombat({ defId: 'mire_creeper' })
+    const before = useGame.getState()
+    const player = before.players[before.combat.playerIdx]
+    const effective = effStats(player)
+    const threat = CREATURES.mire_creeper.threat
+    const predicates = [
+      ...Array.from({ length: effective.rangedDice }, (_, index) =>
+        index === 0 ? (face) => face === 6 : (face) => face < threat),
+      ...Array.from({ length: effective.meleeDice }, (_, index) =>
+        index === 0 ? (face) => face === 6 : (face) => face < threat),
+      ...Array.from({ length: effective.defenseDice }, () => (face) => face < threat),
+    ]
+    useGame.setState((state) => {
+      state.rngState = seedForPattern(predicates)
+    })
+
+    useGame.getState().combatRound(null, 1)
+
+    // Blue critical: 2 - Armor 1 = 1. Red critical then deals its full 2.
+    expect(useGame.getState().combat.hp).toBe(CREATURES.mire_creeper.hp - 3)
+  })
+
   it('only claims a round travel objective after movement, not quest acceptance', () => {
     startGame()
     useGame.setState((state) => {
@@ -363,20 +561,23 @@ describe('combat, quests, and inventory invariants', () => {
     expect(player.gold).toBe(100 - acceptedCost)
   })
 
-  it('lets Vhalrax damage a hero whose armor equals his maximum raw hits', () => {
+  it('keeps Vhalrax minimum damage dangerous against fixed hero armor', () => {
     startGame()
     configureBossCombat()
     useGame.setState((state) => {
       const player = selCurrentPlayer(state)
-      player.armor = CREATURES.vhalrax.dice
-      player.dice = 0
-      state.rngState = seedForRolls(CREATURES.vhalrax.dice, (face) => face >= CREATURES.vhalrax.hitOn)
+      const effective = effStats(player)
+      const heroRollCount = effective.rangedDice + effective.meleeDice + effective.defenseDice
+      player.armor = CREATURES.vhalrax.attack + CREATURES.vhalrax.trait.armorPierce
+      state.combat.minions = []
+      state.rngState = seedForRolls(heroRollCount, (face) => face < CREATURES.vhalrax.threat)
     })
 
     const before = selCurrentPlayer(useGame.getState()).hp
     useGame.getState().combatRound(null, 1)
 
     expect(selCurrentPlayer(useGame.getState()).hp).toBeLessThan(before)
+    expect(useGame.getState().combat.lastCreatureRolls).toBeNull()
   })
 
   it('restores Vhalrax after a hero retreats instead of allowing safe chip damage', () => {
@@ -463,7 +664,7 @@ describe('combat, quests, and inventory invariants', () => {
 describe('persisted save compatibility', () => {
   it('publishes a versioned migration and restores safe defaults', async () => {
     const options = useGame.persist.getOptions()
-    expect(options.version).toBe(7)
+    expect(options.version).toBe(8)
     expect(options.migrate).toEqual(expect.any(Function))
     expect(options.merge).toEqual(expect.any(Function))
 
@@ -472,7 +673,7 @@ describe('persisted save compatibility', () => {
 
     expect(recovered.screen).toBe('menu')
     expect(recovered.players).toEqual([])
-    expect(recovered.saveVersion).toBe(7)
+    expect(recovered.saveVersion).toBe(8)
     expect(recovered.rngState).toEqual(expect.any(Number))
     expect(recovered.handoffPending).toBe(false)
     expect(recovered.tutorialCompleted).toBe(true)
@@ -489,11 +690,23 @@ describe('persisted save compatibility', () => {
       turnOrder: [0, 1],
       turnPos: 0,
       round: 4,
+      creatures: {
+        mirefen: {
+          defId: 'stone_golem',
+          hp: CREATURES.stone_golem.hp,
+          threat: 2,
+          respawnAtRound: null,
+        },
+      },
+      bossThreat: 1,
       handoffPending: { fromPlayerIdx: 1, toPlayerIdx: 0 },
       combat: {
         playerIdx: 0,
         defId: 'stone_golem',
+        regionId: 'mirefen',
         round: 2,
+        threat: 2,
+        minionDice: 1,
         rolling: true,
       },
     }
@@ -505,11 +718,19 @@ describe('persisted save compatibility', () => {
     expect(migrated.round).toBe(4)
     expect(migrated.combat.id).toEqual(expect.any(Number))
     expect(migrated.combat.rolling).toBe(false)
-    // a v6 mid-creature-fight save must never rehydrate into the PvP handoff screen
+    // A legacy mid-creature-fight save must never rehydrate into PvP handoff,
+    // and its old escalation counters must not collide with fixed Threat.
     expect(migrated.combat.pvp).toBe(false)
     expect(migrated.combat.pvpDefensePending).toBe(false)
     expect(migrated.combat.pvpHandoff).toBeNull()
-    expect(migrated.bossThreat).toBe(0)
+    expect(migrated.combat.provoked).toBe(2)
+    expect(migrated.combat.threat).toBeUndefined()
+    expect(migrated.combat.minionAttack).toBe(1)
+    expect(migrated.combat.minionDice).toBeUndefined()
+    expect(migrated.creatures.mirefen.provoked).toBe(2)
+    expect(migrated.creatures.mirefen.threat).toBeUndefined()
+    expect(migrated.bossProvoked).toBe(1)
+    expect(migrated.bossThreat).toBeUndefined()
     expect(migrated.handoffPending).toBe(false)
     expect(migrated.tutorialCompleted).toBe(true)
   })

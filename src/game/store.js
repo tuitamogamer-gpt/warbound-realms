@@ -10,7 +10,16 @@ import { CREATURES, creaturesOfTier } from '../data/creatures'
 import { ITEMS } from '../data/items'
 import { EVENTS, EVENT_LIST } from '../data/events'
 import { QUESTS } from '../data/quests'
-import { rollDice, heroHits, rangedHits, defenseBlocks, creatureHits, shuffle, pick } from './dice'
+import {
+  rollDice,
+  heroHits,
+  rangedHits,
+  defenseBlocks,
+  threatHits,
+  threatBlocks,
+  shuffle,
+  pick,
+} from './dice'
 import { effStats, makePlayer, applyXp } from './rules'
 import { DEFAULT_SEED, nextRandom, normalizeSeed } from './rng'
 
@@ -410,7 +419,7 @@ const resolvePvpDefense = (combat, defender) => {
     defender.energy -= ability.energy
     const effect = ability.effect || {}
     if (effect.noDamage || effect.noRetaliation) combat.defenderNoDamage = true
-    if (effect.enemyDiceDown) combat.attackerDiceDown += effect.enemyDiceDown
+    if (effect.enemyAttackDown) combat.attackerDiceDown += effect.enemyAttackDown
     if (effect.bonusDice) combat.defenderDiceBonus += effect.bonusDice
     if (effect.autoHits) combat.defenderAutoHits += effect.autoHits
     if (effect.critOn5) combat.defenderCritOn5 = true
@@ -458,7 +467,7 @@ const pvpRound = (s, c, abilityId) => {
   let noRetaliation = false
   let noDamage = false
   let critOn5 = eff.critOn5
-  let enemyDiceDown = 0
+  let enemyAttackDown = 0
   if (c.round === 1) bonusDice += eff.firstRoundDice
 
   if (defenseLabel) c.log.unshift({ text: `${t.name} reveals ${defenseLabel}.`, cls: 'event' })
@@ -479,7 +488,7 @@ const pvpRound = (s, c, abilityId) => {
     if (fx.noRetaliation) noRetaliation = true
     if (fx.noDamage) noDamage = true
     if (fx.critOn5) critOn5 = true
-    if (fx.enemyDiceDown) enemyDiceDown += fx.enemyDiceDown
+    if (fx.enemyAttackDown) enemyAttackDown += fx.enemyAttackDown
     if (fx.heal) {
       p.hp = Math.min(eff.maxHp, p.hp + fx.heal)
       c.log.unshift({ text: `${ab.name}: +${fx.heal} HP`, cls: 'good' })
@@ -493,34 +502,39 @@ const pvpRound = (s, c, abilityId) => {
   const mods = bonusDice + (ev.heroDice || 0) - (c.attackerDiceDown || 0)
   const rangedPool = Math.max(0, eff.rangedDice + (eff.primaryDie === 'ranged' ? mods : 0))
   const meleePool = Math.max(0, eff.meleeDice + (eff.primaryDie === 'melee' ? mods : 0))
+  const autoHitPhase = eff.primaryDie === 'ranged' ? 'ranged' : 'melee'
 
   c.rollId = (c.rollId || 0) + 1
   c.lastCritOn5 = critOn5
   c.lastAutoHits = autoHits
+  c.lastAutoHitPhase = autoHits > 0 ? autoHitPhase : null
   c.lastRangedRolls = null
   c.lastHeroRolls = null
   c.lastDefenseRolls = null
+  c.lastDefenderDefenseRolls = null
   c.lastCreatureRolls = null
 
-  // like creature armor, the defender's armor absorbs once per round across both phases
+  // A hero's green pool rolls once per duel round. Its successes and flat
+  // armor are shared across the incoming blue and red phases.
+  const defenderGuardRolls = randomRolls(s, defEff.defenseDice)
+  let defenderGuardLeft = defenseBlocks(defenderGuardRolls)
+  c.lastDefenderDefenseRolls = defenderGuardRolls.length ? defenderGuardRolls : null
   let defenderArmorLeft = defEff.armor + (c.defenderArmorBonus || 0)
 
   // ---- phase 1: the attacker's ranged volley (defender may fall before the clash) ----
   if (rangedPool > 0) {
     const rangedRolls = randomRolls(s, rangedPool)
     c.lastRangedRolls = rangedRolls
-    const rHits = rangedHits(rangedRolls, critOn5) + autoHits
-    autoHits = 0
-    // the defender's shields answer every phase
-    const rBlockRolls = randomRolls(s, defEff.defenseDice)
-    const rBlocks = defenseBlocks(rBlockRolls)
+    const rHits = rangedHits(rangedRolls, critOn5) + (autoHitPhase === 'ranged' ? autoHits : 0)
+    const rBlocks = Math.min(defenderGuardLeft, rHits)
+    defenderGuardLeft -= rBlocks
     const rAfterBlocks = Math.max(0, rHits - rBlocks)
     const rSoaked = c.defenderNoDamage ? 0 : Math.min(defenderArmorLeft, rAfterBlocks)
     const dmgVolley = c.defenderNoDamage ? 0 : rAfterBlocks - rSoaked
     defenderArmorLeft -= rSoaked
     t.hp = Math.max(0, t.hp - dmgVolley)
     c.log.unshift({
-      text: `${p.name} looses ${rangedPool} ranged dice → ${dmgVolley} damage${(rBlocks || rSoaked) && rHits ? ` (${rHits} hits − ${rBlocks} blocked − ${rSoaked} armor)` : ''}`,
+      text: `${p.name} rolls ${rangedPool} blue dice → ${dmgVolley} damage${(rBlocks || rSoaked) && rHits ? ` (${rHits} hits − ${rBlocks} guard − ${rSoaked} armor)` : ''}`,
       cls: '',
     })
   }
@@ -533,9 +547,9 @@ const pvpRound = (s, c, abilityId) => {
   if (!defenderDead) {
     const meleeRolls = randomRolls(s, meleePool)
     c.lastHeroRolls = meleeRolls
-    const mHits = heroHits(meleeRolls, critOn5) + autoHits
-    const mBlockRolls = randomRolls(s, defEff.defenseDice)
-    const mBlocks = defenseBlocks(mBlockRolls)
+    const mHits = heroHits(meleeRolls, critOn5) + (autoHitPhase === 'melee' ? autoHits : 0)
+    const mBlocks = Math.min(defenderGuardLeft, mHits)
+    defenderGuardLeft -= mBlocks
     const mAfterBlocks = Math.max(0, mHits - mBlocks)
     const mSoaked = c.defenderNoDamage ? 0 : Math.min(defenderArmorLeft, mAfterBlocks)
     const dmgOut = c.defenderNoDamage ? 0 : mAfterBlocks - mSoaked
@@ -543,7 +557,7 @@ const pvpRound = (s, c, abilityId) => {
     t.hp = Math.max(0, t.hp - dmgOut)
     if (meleePool > 0 || autoHits > 0) {
       c.log.unshift({
-        text: `${p.name} clashes with ${meleePool} melee dice → ${dmgOut} damage${(mBlocks || mSoaked) && mHits ? ` (${mHits} hits − ${mBlocks} blocked − ${mSoaked} armor)` : ''}`,
+        text: `${p.name} rolls ${meleePool} red dice → ${dmgOut} damage${(mBlocks || mSoaked) && mHits ? ` (${mHits} hits − ${mBlocks} guard − ${mSoaked} armor)` : ''}`,
         cls: '',
       })
     }
@@ -553,7 +567,7 @@ const pvpRound = (s, c, abilityId) => {
       // the defender answers with every attack die they own
       let defPool =
         defEff.rangedDice + defEff.meleeDice + (ev.heroDice || 0) +
-        (c.round === 1 ? defEff.firstRoundDice : 0) + (c.defenderDiceBonus || 0) - enemyDiceDown
+        (c.round === 1 ? defEff.firstRoundDice : 0) + (c.defenderDiceBonus || 0) - enemyAttackDown
       defPool = Math.max(0, defPool)
       const dRolls = randomRolls(s, defPool)
       const dHits = heroHits(dRolls, defEff.critOn5 || c.defenderCritOn5) + (c.defenderAutoHits || 0)
@@ -714,7 +728,7 @@ export const useGame = create(
   persist(
     immer((set, get) => ({
     screen: 'menu',
-    saveVersion: 6,
+    saveVersion: 8,
     matchId: 0,
     seed: DEFAULT_SEED,
     rngState: DEFAULT_SEED,
@@ -738,7 +752,7 @@ export const useGame = create(
     bossSpawned: false,
     bossHp: 0,
     bossDamageByFaction: { accord: 0, dominion: 0 },
-    bossThreat: 0,
+    bossProvoked: 0,
     movesLeft: 0,
     actionUsed: false,
     purchaseRequestIdsThisTurn: [],
@@ -769,7 +783,7 @@ export const useGame = create(
       }
       const seed = normalizeSeed(options.seed ?? Date.now())
       set((s) => {
-        s.saveVersion = 6
+        s.saveVersion = 8
         s.matchId += 1
         s.seed = seed
         s.rngState = seed
@@ -792,7 +806,7 @@ export const useGame = create(
         s.bossSpawned = false
         s.bossHp = 0
         s.bossDamageByFaction = { accord: 0, dominion: 0 }
-        s.bossThreat = 0
+        s.bossProvoked = 0
         s.eventDeck = randomShuffle(s, EVENT_LIST.map((e) => e.id))
         s.eventChoice = null
         s.eventObjective = null
@@ -855,7 +869,7 @@ export const useGame = create(
         s.bossSpawned = false
         s.bossHp = 0
         s.bossDamageByFaction = { accord: 0, dominion: 0 }
-        s.bossThreat = 0
+        s.bossProvoked = 0
         s.movesLeft = 0
         s.actionUsed = false
         s.purchaseRequestIdsThisTurn = []
@@ -1198,7 +1212,10 @@ export const useGame = create(
           elixirArmor: 0,
           lastHeroRolls: null,
           lastCreatureRolls: null,
+          lastDefenderDefenseRolls: null,
+          lastEnemyAttack: null,
           lastAutoHits: 0,
+          lastAutoHitPhase: null,
           lastCritOn5: false,
           rollId: 0,
           rolling: false,
@@ -1279,14 +1296,14 @@ export const useGame = create(
           hp = s.bossHp
         }
         let elite = false
-        let threat = boss ? s.bossThreat || 0 : 0
+        let provoked = boss ? s.bossProvoked || 0 : 0
         if (!boss) {
           const slot = s.creatures[p.region]
           if (!slot) return
           creatureDef = CREATURES[slot.defId]
           hp = slot.hp
           elite = !!slot.elite
-          threat = slot.threat || 0
+          provoked = slot.provoked || 0
         }
         s.actionUsed = true
         s.combatSeq += 1
@@ -1297,7 +1314,7 @@ export const useGame = create(
           defId: creatureDef.id,
           boss,
           elite,
-          threat,
+          provoked,
           pvp: false,
           pvpDefensePending: false,
           pvpHandoff: null,
@@ -1307,7 +1324,7 @@ export const useGame = create(
             : [],
           minionName: creatureDef.minions?.name || null,
           minionId: creatureDef.minions?.id || null,
-          minionDice: creatureDef.minions?.dice || 0,
+          minionAttack: creatureDef.minions?.attack || 0,
           minionMaxHp: creatureDef.minions?.hp || 0,
           hp,
           maxHp: creatureDef.hp + (elite ? GAME.ELITE_BONUS_HP : 0),
@@ -1323,7 +1340,9 @@ export const useGame = create(
           elixirArmor: 0,
           lastHeroRolls: null,
           lastCreatureRolls: null,
+          lastEnemyAttack: null,
           lastAutoHits: 0,
+          lastAutoHitPhase: null,
           lastCritOn5: false,
           rollId: 0,
           rolling: false,
@@ -1357,14 +1376,14 @@ export const useGame = create(
 
         let bonusDice = c.elixirDice
         let autoHits = c.elixirAutoHits || 0
-        let bonusArmor = c.elixirArmor || 0 // consumables (Stoneskin Draught)
-        c.elixirDice = 0 // one-shot consumables empower exactly one roll
+        const bonusArmor = c.elixirArmor || 0
+        c.elixirDice = 0
         c.elixirAutoHits = 0
         c.elixirArmor = 0
         let noRetaliation = false
         let noDamage = false
-        let critOn5 = eff.critOn5 // passive from Frostbrand Sword
-        let enemyDiceDown = 0
+        let critOn5 = eff.critOn5
+        let enemyAttackDown = 0
 
         if (c.round === 1) bonusDice += eff.firstRoundDice
 
@@ -1375,7 +1394,7 @@ export const useGame = create(
           p.abilities.includes(ab.id) &&
           p.energy >= ab.energy &&
           !c.abilityUsed &&
-          !(isHealOnly(ab) && p.hp >= eff.maxHp) // don't waste a heal at full health
+          !(isHealOnly(ab) && p.hp >= eff.maxHp)
         ) {
           c.abilityUsed = true
           p.energy -= ab.energy
@@ -1385,7 +1404,7 @@ export const useGame = create(
           if (fx.noRetaliation) noRetaliation = true
           if (fx.noDamage) noDamage = true
           if (fx.critOn5) critOn5 = true
-          if (fx.enemyDiceDown) enemyDiceDown += fx.enemyDiceDown
+          if (fx.enemyAttackDown) enemyAttackDown += fx.enemyAttackDown
           if (fx.heal) {
             p.hp = Math.min(eff.maxHp, p.hp + fx.heal)
             c.log.unshift({ text: `${ab.name}: +${fx.heal} HP`, cls: 'good' })
@@ -1395,23 +1414,37 @@ export const useGame = create(
         }
         if (eff.firstStrike && c.round === 1) noRetaliation = true
 
-        // the ward negates automatic hits from any source (elixirs AND abilities)
+        // Wards negate automatic hits, but never ordinary colored successes.
         autoHits = Math.max(0, autoHits - (trait.autoHitWard || 0))
 
-        // ---- dice pools: base split by class profile; generic bonuses sharpen the primary color ----
         const mods = bonusDice + (ev.heroDice || 0) - (trait.heroDiceDown || 0)
         const rangedPool = Math.max(0, eff.rangedDice + (eff.primaryDie === 'ranged' ? mods : 0))
         const meleePool = Math.max(0, eff.meleeDice + (eff.primaryDie === 'melee' ? mods : 0))
+        const defensePool = Math.max(0, eff.defenseDice)
+        const autoHitPhase = eff.primaryDie === 'ranged' ? 'ranged' : 'melee'
+
+        // All three hero colors roll together against the creature's Threat.
+        const rangedRolls = randomRolls(s, rangedPool)
+        const meleeRolls = randomRolls(s, meleePool)
+        const defenseRolls = randomRolls(s, defensePool)
+        const rangedDiceHits = threatHits(rangedRolls, creatureDef.threat, critOn5)
+        const meleeDiceHits = threatHits(meleeRolls, creatureDef.threat, critOn5)
+        const redGuard = threatBlocks(meleeRolls, creatureDef.threat)
+        const greenGuard = threatBlocks(defenseRolls, creatureDef.threat)
+        const rangedRaw = rangedDiceHits + (autoHitPhase === 'ranged' ? autoHits : 0)
+        const meleeRaw = meleeDiceHits + (autoHitPhase === 'melee' ? autoHits : 0)
 
         c.rollId = (c.rollId || 0) + 1
         c.lastCritOn5 = critOn5
         c.lastAutoHits = autoHits
-        c.lastRangedRolls = null
-        c.lastHeroRolls = null
-        c.lastDefenseRolls = null
+        c.lastAutoHitPhase = autoHits > 0 ? autoHitPhase : null
+        c.lastRangedRolls = rangedRolls.length ? rangedRolls : null
+        c.lastHeroRolls = meleeRolls.length ? meleeRolls : null
+        c.lastDefenseRolls = defenseRolls.length ? defenseRolls : null
         c.lastCreatureRolls = null
+        c.lastEnemyAttack = null
 
-        // hits spill onto living minions first, then the main enemy
+        // Hits spill onto living minions first, then the main enemy.
         const applyHits = (amount) => {
           let remaining = amount
           for (const m of c.minions || []) {
@@ -1420,7 +1453,9 @@ export const useGame = create(
             const bite = Math.min(m.hp, remaining)
             m.hp -= bite
             remaining -= bite
-            if (m.hp <= 0) c.log.unshift({ text: `A ${c.minionName || 'minion'} is destroyed!`, cls: 'good' })
+            if (m.hp <= 0) {
+              c.log.unshift({ text: `A ${c.minionName || 'minion'} is destroyed!`, cls: 'good' })
+            }
           }
           const toMain = Math.min(c.hp, remaining)
           c.hp = Math.max(0, c.hp - toMain)
@@ -1430,87 +1465,107 @@ export const useGame = create(
           return toMain
         }
 
-        let armorLeft = trait.armor || 0
-
-        // ---- phase 1: ranged volley — a kill here draws no blood in return ----
-        if (rangedPool > 0) {
-          const rangedRolls = randomRolls(s, rangedPool)
-          c.lastRangedRolls = rangedRolls
-          const rangedRaw = rangedHits(rangedRolls, critOn5) + autoHits
-          autoHits = 0
-          const volleySoaked = Math.min(armorLeft, rangedRaw)
-          const rangedNet = rangedRaw - volleySoaked
-          armorLeft -= volleySoaked
-          applyHits(rangedNet)
-          c.log.unshift({
-            text: `${p.name} looses ${rangedPool} ranged dice → ${rangedNet} hit${rangedNet === 1 ? '' : 's'}${volleySoaked > 0 ? ` (${trait.name} soaked ${volleySoaked})` : ''}`,
-            cls: '',
-          })
-        }
+        // Fixed enemy Armor is a single, visible soak budget shared by blue
+        // and red for this round. It never rolls and never refreshes mid-round.
+        let enemyArmorLeft = creatureDef.armor || 0
+        const volleySoaked = Math.min(enemyArmorLeft, rangedRaw)
+        const rangedNet = rangedRaw - volleySoaked
+        enemyArmorLeft -= volleySoaked
+        applyHits(rangedNet)
+        c.log.unshift({
+          text: `Blue pool ${rangedPool} vs Threat ${creatureDef.threat}+ → ${rangedNet} ranged damage${volleySoaked ? ` (${volleySoaked} fixed Armor)` : ''}`,
+          cls: '',
+        })
 
         let mainDead = c.hp <= 0
         let heroDead = false
-        if (mainDead) c.log.unshift({ text: 'The volley fells it before it can strike back!', cls: 'good' })
-
-        // ---- phase 2: the clash — melee and the enemy strike simultaneously ----
-        if (!mainDead) {
-          // the clash is simultaneous: minion dice and enrage judge the state
-          // as the clash BEGINS — only the volley thins them out beforehand
+        if (mainDead) {
+          c.log.unshift({ text: 'The blue volley fells it before its fixed Attack resolves!', cls: 'good' })
+        } else {
+          // Only minions still alive after the blue volley add fixed Attack.
+          // Red successes help guard this Attack, then deal delayed damage.
           const clashMinions = (c.minions || []).filter((m) => m.hp > 0).length
           const clashHp = c.hp
-          const meleeRolls = randomRolls(s, meleePool)
-          c.lastHeroRolls = meleeRolls
-          const meleeRaw = heroHits(meleeRolls, critOn5) + autoHits
-          const soaked = Math.min(armorLeft, meleeRaw)
-          const meleeNet = meleeRaw - soaked
-          armorLeft -= soaked
-          applyHits(meleeNet)
-          mainDead = c.hp <= 0
-          if (meleePool > 0 || autoHits > 0) {
-            c.log.unshift({
-              text: `${p.name} clashes with ${meleePool} melee dice → ${meleeNet} hit${meleeNet === 1 ? '' : 's'}${soaked > 0 ? ` (${trait.name} soaked ${soaked})` : ''}`,
-              cls: '',
-            })
-          }
+          const enraged = !!(trait.enrageBelow && clashHp / c.maxHp <= trait.enrageBelow)
+          const baseAttack = creatureDef.attack || 0
+          const eventAttack = ev.creatureAttack || 0
+          const traitAttack =
+            (c.round === 1 ? trait.firstRoundAttack || 0 : 0) +
+            (enraged ? trait.enrageAttack || 0 : 0)
+          const minionAttack = clashMinions * (c.minionAttack || 0)
+          const provokedAttack = (c.provoked || 0) * GAME.PROVOKED_ATTACK
+          const attackBeforeReduction = Math.max(
+            0,
+            baseAttack + eventAttack + traitAttack + minionAttack + provokedAttack,
+          )
+          const reducedAttack = Math.min(attackBeforeReduction, enemyAttackDown)
+          const fixedAttack = attackBeforeReduction - reducedAttack
+          const rawHeroArmor = eff.armor + bonusArmor
+          const effectiveArmor = Math.max(0, rawHeroArmor - (trait.armorPierce || 0))
+          const guard = redGuard + greenGuard
+          let damage = 0
 
           if (!noRetaliation) {
-            const enraged = trait.enrageBelow && clashHp / c.maxHp <= trait.enrageBelow
-            const minionDice = clashMinions * (c.minionDice || 0)
-            const cDice = Math.max(
-              0,
-              creatureDef.dice + (ev.creatureDice || 0) - enemyDiceDown +
-                (c.round === 1 ? trait.firstRoundDice || 0 : 0) +
-                (enraged ? trait.enrageDice || 0 : 0) +
-                minionDice + (c.threat || 0) * GAME.THREAT_DICE
-            )
-            const cRolls = randomRolls(s, cDice)
-            const cHits = creatureHits(cRolls, creatureDef.hitOn)
-            const defenseRolls = randomRolls(s, eff.defenseDice)
-            const blocks = defenseBlocks(defenseRolls)
-            c.lastDefenseRolls = defenseRolls.length ? defenseRolls : null
-            const armor = eff.armor + bonusArmor
-            const effectiveArmor = Math.max(0, armor - (trait.armorPierce || 0))
-            const dmg = noDamage
+            damage = noDamage
               ? 0
-              : cHits > 0
-                ? Math.max(trait.minimumDamage || 0, cHits - blocks - effectiveArmor)
+              : fixedAttack > 0
+                ? Math.max(trait.minimumDamage || 0, fixedAttack - guard - effectiveArmor)
                 : 0
-            c.lastCreatureRolls = cRolls
-            p.hp = Math.max(0, p.hp - dmg)
+            p.hp = Math.max(0, p.hp - damage)
+            c.lastEnemyAttack = {
+              base: baseAttack,
+              event: eventAttack,
+              trait: traitAttack,
+              minions: minionAttack,
+              provoked: provokedAttack,
+              reduced: reducedAttack,
+              total: fixedAttack,
+              redGuard,
+              greenGuard,
+              guard,
+              armor: effectiveArmor,
+              damage,
+              absorbed: noDamage,
+            }
             c.log.unshift({
               text: noDamage
-                ? `${creatureDef.name} strikes — ${ab?.name || 'your ward'} absorbs everything!`
-                : `${creatureDef.name} rolls ${cDice} dice → ${dmg} damage${(blocks || armor) && cHits ? ` (${cHits} hits − ${blocks} blocked − ${effectiveArmor} armor)` : ''}`,
-              cls: dmg > 0 ? 'bad' : '',
+                ? `${creatureDef.name} Attack ${fixedAttack} — ${ab?.name || 'your ward'} absorbs everything!`
+                : `${creatureDef.name} fixed Attack ${fixedAttack} → ${damage} damage (${redGuard} red guard + ${greenGuard} green guard + ${effectiveArmor} armor)`,
+              cls: damage > 0 ? 'bad' : '',
             })
-            if (dmg > 0 && trait.energyDrainOnHit) {
+            if (damage > 0 && trait.energyDrainOnHit) {
               p.energy = Math.max(0, p.energy - trait.energyDrainOnHit)
               c.log.unshift({ text: `${trait.name} drains ${trait.energyDrainOnHit} energy.`, cls: 'bad' })
             }
             heroDead = p.hp <= 0
           } else {
-            c.log.unshift({ text: `${creatureDef.name} cannot strike back!`, cls: 'good' })
+            c.lastEnemyAttack = {
+              base: baseAttack,
+              event: eventAttack,
+              trait: traitAttack,
+              minions: minionAttack,
+              provoked: provokedAttack,
+              reduced: reducedAttack,
+              total: fixedAttack,
+              redGuard,
+              greenGuard,
+              guard,
+              armor: effectiveArmor,
+              damage: 0,
+              skipped: true,
+            }
+            c.log.unshift({ text: `${creatureDef.name} cannot use its fixed Attack!`, cls: 'good' })
           }
+
+          const meleeSoaked = Math.min(enemyArmorLeft, meleeRaw)
+          const meleeNet = meleeRaw - meleeSoaked
+          enemyArmorLeft -= meleeSoaked
+          applyHits(meleeNet)
+          mainDead = c.hp <= 0
+          c.log.unshift({
+            text: `Red pool ${meleePool} vs Threat ${creatureDef.threat}+ → ${meleeNet} melee damage and ${redGuard} guard${meleeSoaked ? ` (${meleeSoaked} fixed Armor)` : ''}`,
+            cls: '',
+          })
         }
 
         // ---- resolve deaths (the clash can fell both sides at once) ----
@@ -1561,14 +1616,17 @@ export const useGame = create(
           c.over = true
           c.heroDied = true
           if (!mainDead) {
-            // the survivor grows bolder: keep its wounds, raise its threat
+            // The survivor keeps its wounds and gains one Provoked stack.
             if (c.boss) {
               const restored = regenerateBoss(s, c, p.faction)
               c.log.unshift({ text: `Undying regeneration restores ${restored} health.`, cls: 'bad' })
-              s.bossThreat = Math.min(GAME.THREAT_MAX, (s.bossThreat || 0) + 1)
+              s.bossProvoked = Math.min(GAME.PROVOKED_MAX, (s.bossProvoked || 0) + 1)
             } else if (s.creatures[c.regionId]) {
               s.creatures[c.regionId].hp = c.hp
-              s.creatures[c.regionId].threat = Math.min(GAME.THREAT_MAX, (s.creatures[c.regionId].threat || 0) + 1)
+              s.creatures[c.regionId].provoked = Math.min(
+                GAME.PROVOKED_MAX,
+                (s.creatures[c.regionId].provoked || 0) + 1,
+              )
             }
           }
           heroDeath(s, p)
@@ -1605,13 +1663,13 @@ export const useGame = create(
         if (c.boss) {
           const restored = regenerateBoss(s, c, p.faction)
           c.log.unshift({ text: `Undying regeneration restores ${restored} health.`, cls: 'bad' })
-          // an unchallenged tyrant only grows bolder
-          s.bossThreat = Math.min(GAME.THREAT_MAX, (s.bossThreat || 0) + 1)
+          // An unchallenged tyrant only grows bolder.
+          s.bossProvoked = Math.min(GAME.PROVOKED_MAX, (s.bossProvoked || 0) + 1)
         } else if (s.creatures[c.regionId]) {
           s.creatures[c.regionId].hp = c.hp
-          s.creatures[c.regionId].threat = Math.min(
-            GAME.THREAT_MAX,
-            (s.creatures[c.regionId].threat || 0) + 1
+          s.creatures[c.regionId].provoked = Math.min(
+            GAME.PROVOKED_MAX,
+            (s.creatures[c.regionId].provoked || 0) + 1,
           )
         }
         addLog(s, `${p.name} flees from ${creatureDef.name}.`, 'bad')
@@ -1652,9 +1710,9 @@ export const useGame = create(
     })),
     {
       name: 'warbound-realms-save',
-      // v7: dice-rework fields (bossThreat, combat pvp/minion defaults) — the
-      // bump makes migrate actually run on existing v6 saves
-      version: 7,
+      // v8: creatures use fixed Threat/Attack/Armor; the old dynamic threat
+      // counter migrates to Provoked so it cannot collide with hit thresholds.
+      version: 8,
       storage: createJSONStorage(() =>
         typeof window !== 'undefined' ? window.localStorage : noopStorage
       ),
@@ -1665,9 +1723,22 @@ export const useGame = create(
           Number.isInteger(state.combatSeq) ? state.combatSeq : 0,
           Number.isInteger(state.combat?.id) ? state.combat.id : state.combat ? 1 : 0
         )
+        const migratedCreatures = Object.fromEntries(
+          Object.entries(state.creatures && typeof state.creatures === 'object' ? state.creatures : {})
+            .map(([regionId, slot]) => {
+              if (!slot) return [regionId, slot]
+              const nextSlot = { ...slot }
+              nextSlot.provoked = Math.min(
+                GAME.PROVOKED_MAX,
+                Math.max(0, Number.isInteger(slot.provoked) ? slot.provoked : Number(slot.threat) || 0),
+              )
+              delete nextSlot.threat
+              return [regionId, nextSlot]
+            }),
+        )
         const migrated = {
           ...state,
-          saveVersion: 7,
+          saveVersion: 8,
           matchId: Number.isInteger(state.matchId) ? state.matchId : 0,
           seed,
           rngState: normalizeSeed(state.rngState ?? seed),
@@ -1684,7 +1755,17 @@ export const useGame = create(
             dominion: Number(state.bossDamageByFaction?.dominion) || 0,
           },
           caches: state.caches && typeof state.caches === 'object' ? state.caches : {},
-          bossThreat: Number.isInteger(state.bossThreat) ? state.bossThreat : 0,
+          creatures: migratedCreatures,
+          bossProvoked: Math.min(
+            GAME.PROVOKED_MAX,
+            Math.max(
+              0,
+              Number.isInteger(state.bossProvoked)
+                ? state.bossProvoked
+                : Number(state.bossThreat) || 0,
+            ),
+          ),
+          bossThreat: undefined,
           purchaseRequestIdsThisTurn: Array.isArray(state.purchaseRequestIdsThisTurn)
             ? state.purchaseRequestIdsThisTurn
             : [],
@@ -1756,6 +1837,22 @@ export const useGame = create(
                   combat.pvpDefensePending = false
                   combat.pvpHandoff = null
                   combat.defenderResponse = null
+                  combat.provoked = Math.min(
+                    GAME.PROVOKED_MAX,
+                    Math.max(
+                      0,
+                      Number.isInteger(combat.provoked)
+                        ? combat.provoked
+                        : Number(combat.threat) || 0,
+                    ),
+                  )
+                  delete combat.threat
+                  combat.minionAttack = Number.isFinite(combat.minionAttack)
+                    ? combat.minionAttack
+                    : Number(combat.minionDice) || creature.minions?.attack || 0
+                  delete combat.minionDice
+                  combat.lastCreatureRolls = null
+                  combat.lastEnemyAttack = null
                   combat.maxHp = Number.isFinite(combat.maxHp) ? combat.maxHp : creature.hp
                   combat.hp = Math.min(combat.maxHp, Math.max(0, Number.isFinite(combat.hp) ? combat.hp : combat.maxHp))
                 }

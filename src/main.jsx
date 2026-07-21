@@ -2,6 +2,8 @@ import { createRoot } from 'react-dom/client'
 import './styles.css'
 import App from './App.jsx'
 import { selBlockingModal, useGame } from './game/store'
+import { CREATURES } from './data/creatures'
+import { effStats } from './game/rules'
 
 // dev-only handle for driving the store from the console / tests
 if (import.meta.env.DEV) window.__game = useGame
@@ -12,6 +14,10 @@ window.render_game_to_text = () => {
   const state = useGame.getState()
   const activePlayerIdx = state.turnOrder?.[state.turnPos]
   const activePlayer = state.players?.[activePlayerIdx] ?? null
+  const activeStats = activePlayer ? effStats(activePlayer) : null
+  const combatCreature = state.combat && !state.combat.pvp
+    ? CREATURES[state.combat.defId]
+    : null
   return JSON.stringify({
     screen: state.screen,
     round: state.round,
@@ -25,6 +31,12 @@ window.render_game_to_text = () => {
       gold: activePlayer.gold,
       vp: activePlayer.vp,
       quests: activePlayer.quests,
+      dicePools: {
+        blue: activeStats.rangedDice,
+        red: activeStats.meleeDice,
+        green: activeStats.defenseDice,
+      },
+      armor: activeStats.armor,
     },
     movesLeft: state.movesLeft,
     actionUsed: state.actionUsed,
@@ -37,6 +49,21 @@ window.render_game_to_text = () => {
       regionId: state.combat.regionId,
       creatureId: state.combat.defId ?? null,
       pvpDefensePending: Boolean(state.combat.pvpDefensePending),
+      heroRolls: {
+        blue: state.combat.lastRangedRolls,
+        red: state.combat.lastHeroRolls,
+        green: state.combat.lastDefenseRolls,
+      },
+      creature: combatCreature && {
+        hp: state.combat.hp,
+        maxHp: state.combat.maxHp,
+        threat: combatCreature.threat,
+        attack: combatCreature.attack,
+        armor: combatCreature.armor,
+        provoked: state.combat.provoked || 0,
+        livingMinions: (state.combat.minions || []).filter((minion) => minion.hp > 0).length,
+        lastAttack: state.combat.lastEnemyAttack,
+      },
     },
     modal: selBlockingModal(state),
     scores: ['accord', 'dominion'].reduce((scores, faction) => {

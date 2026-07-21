@@ -20,8 +20,8 @@ export const GAME = {
   ELITE_BONUS_REWARD: 1, // extra XP, gold and VP for slaying an elite
   CACHE_CHANCE: 0.2, // chance a slain creature drops a treasure cache
   CACHE_GOLD: 2,
-  THREAT_MAX: 2, // a fled/victorious creature grows more dangerous, up to this
-  THREAT_DICE: 1, // extra clash dice per point of threat
+  PROVOKED_MAX: 2, // a fled/victorious creature grows more dangerous, up to this
+  PROVOKED_ATTACK: 1, // fixed Attack gained per Provoked stack
 }
 
 // cumulative XP needed to reach level 1..5

@@ -47,15 +47,15 @@ export function effStats(player) {
     if (fx.firstRoundDice) eff.firstRoundDice += fx.firstRoundDice
   }
 
-  // Three-color dice pools. The hero's BASE attack dice are split by their
-  // class profile; every earned die (levels, talents, items, passives — the
-  // amount by which eff.dice exceeds the base) sharpens their PRIMARY color.
+  // Three-color dice pools. Every hero begins with blue, red, and green dice.
+  // Earned (or lost) generic attack dice modify the class's primary color,
+  // preserving its identity without making another color unavailable.
   const hero = HEROES[player.heroId]
-  const profile = hero?.diceProfile || { ranged: 0, melee: eff.dice, defense: 0, primary: 'melee' }
-  const growth = Math.max(0, eff.dice - (hero?.base.dice ?? eff.dice))
-  eff.rangedDice = profile.ranged + (profile.primary === 'ranged' ? growth : 0)
-  eff.meleeDice = profile.melee + (profile.primary === 'melee' ? growth : 0)
-  eff.defenseDice = profile.defense
+  const profile = hero?.diceProfile || { ranged: 1, melee: Math.max(1, eff.dice - 1), defense: 1, primary: 'melee' }
+  const attackDelta = eff.dice - (hero?.base.dice ?? eff.dice)
+  eff.rangedDice = Math.max(0, profile.ranged + (profile.primary === 'ranged' ? attackDelta : 0))
+  eff.meleeDice = Math.max(0, profile.melee + (profile.primary === 'melee' ? attackDelta : 0))
+  eff.defenseDice = Math.max(0, profile.defense)
   eff.primaryDie = profile.primary
   return eff
 }

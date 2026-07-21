@@ -15,8 +15,17 @@ export const rangedHits = (rolls, critOn5 = false) =>
 // Defense dice: each 5+ blocks one incoming hit before armor applies.
 export const defenseBlocks = (rolls) => rolls.reduce((b, r) => b + (r >= 5 ? 1 : 0), 0)
 
-// Creatures: hit on `hitOn`+
-export const creatureHits = (rolls, hitOn) => rolls.reduce((h, r) => h + (r >= hitOn ? 1 : 0), 0)
+// Creature combat: every hero color tests against the creature's Threat.
+// Attack colors retain this game's critical-hit rule; green produces one
+// guard for every successful die.
+export const threatHits = (rolls, threat, critOn5 = false) =>
+  rolls.reduce((hits, face) => {
+    if (face < threat) return hits
+    return hits + (face >= (critOn5 ? 5 : 6) ? 2 : 1)
+  }, 0)
+
+export const threatBlocks = (rolls, threat) =>
+  rolls.reduce((blocks, face) => blocks + (face >= threat ? 1 : 0), 0)
 
 export const shuffle = (arr, rng = Math.random) => {
   const a = [...arr]
