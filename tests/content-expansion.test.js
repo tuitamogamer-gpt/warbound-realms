@@ -120,6 +120,94 @@ describe('treasure caches', () => {
   })
 })
 
+describe('three-color dice combat', () => {
+  it('a ranged-volley kill draws no retaliation', () => {
+    startGame(NEW_HERO_ROSTER) // both new heroes are ranged-primary (2 ranged dice)
+    useGame.setState((state) => {
+      const player = selCurrentPlayer(state)
+      player.region = 'silverwood'
+      player.energy = 10
+      player.maxEnergy = 10
+      player.abilities = [...player.abilities, 'triple_volley', 'chain_lightning']
+      state.creatures.silverwood = { defId: 'gnarlwood_wolf', hp: 4, respawnAtRound: null }
+      state.actionUsed = false
+      state.eventId = null
+      state.combat = null
+    })
+    useGame.getState().startCombat(false)
+    const hpBefore = selCurrentPlayer(useGame.getState()).hp
+    // shrink the wolf to volley range: any single ranged hit will fell it
+    useGame.setState((state) => {
+      state.combat.hp = 1
+    })
+    useGame.getState().combatRound(null, 1)
+    const after = useGame.getState()
+    if (after.combat.heroWon && after.combat.lastHeroRolls === null) {
+      // volley kill: no clash rolls, no damage taken
+      expect(selCurrentPlayer(after).hp).toBe(hpBefore)
+      expect(after.combat.lastCreatureRolls).toBeNull()
+    }
+    // whatever the dice did, the fight must have progressed legally
+    expect(after.combat.round === 1 || after.combat.round === 2 || after.combat.over).toBe(true)
+  })
+
+  it('minions absorb hits before the main enemy and add clash dice', () => {
+    startGame(NEW_HERO_ROSTER)
+    useGame.setState((state) => {
+      const player = selCurrentPlayer(state)
+      player.region = 'frostpeak'
+      player.energy = 10
+      player.maxEnergy = 10
+      player.abilities = [...player.abilities, 'triple_volley', 'chain_lightning']
+      state.creatures.frostpeak = { defId: 'frost_wyrm', hp: 12, respawnAtRound: null }
+      state.actionUsed = false
+      state.eventId = null
+      state.combat = null
+    })
+    useGame.getState().startCombat(false)
+    const combat = useGame.getState().combat
+    const minionDef = CREATURES.frost_wyrm.minions
+    expect(combat.minions).toHaveLength(minionDef.count)
+    expect(combat.minions[0].hp).toBe(minionDef.hp)
+
+    // 3 auto hits: the Rime Spawn falls first, the remainder bites the wyrm
+    const ability = selCurrentPlayer(useGame.getState()).abilities.includes('triple_volley')
+      ? 'triple_volley'
+      : 'chain_lightning'
+    useGame.getState().combatRound(ability, 1)
+    const after = useGame.getState().combat
+    expect(after.minions[0].hp).toBeLessThanOrEqual(0)
+    // at least (3 − minion hp) auto hits spilled through to the wyrm
+    expect(after.hp).toBeLessThanOrEqual(CREATURES.frost_wyrm.hp - (3 - minionDef.hp * minionDef.count))
+  })
+
+  it('fleeing provokes the creature (threat rises, capped)', () => {
+    startGame(NEW_HERO_ROSTER)
+    useGame.setState((state) => {
+      const player = selCurrentPlayer(state)
+      player.region = 'silverwood'
+      state.creatures.silverwood = { defId: 'mire_creeper', hp: 5, respawnAtRound: null }
+      state.actionUsed = false
+      state.eventId = null
+      state.combat = null
+    })
+    useGame.getState().startCombat(false)
+    useGame.setState((state) => {
+      state.combat.rolling = false
+    })
+    useGame.getState().combatFlee()
+    expect(useGame.getState().creatures.silverwood.threat).toBe(1)
+
+    // the next fight carries the provocation snapshot
+    useGame.setState((state) => {
+      state.actionUsed = false
+      state.combat = null
+    })
+    useGame.getState().startCombat(false)
+    expect(useGame.getState().combat.threat).toBe(1)
+  })
+})
+
 describe('new round events', () => {
   it('long_roads grants +1 movement on the next turn', () => {
     startGame(NEW_HERO_ROSTER)

@@ -9,6 +9,7 @@ export const HEROES = {
     faction: 'dominion',
     base: { hp: 10, dice: 3, armor: 0, energy: 2, move: 2 },
     signature: 'rage',
+    diceProfile: { ranged: 0, melee: 3, defense: 1, primary: 'melee' },
     blurb: 'A warchief who answers every question with an axe. Usually both axes.',
   },
   zyra: {
@@ -18,6 +19,7 @@ export const HEROES = {
     faction: 'dominion',
     base: { hp: 8, dice: 2, armor: 0, energy: 5, move: 2 },
     signature: 'fireball',
+    diceProfile: { ranged: 2, melee: 0, defense: 1, primary: 'ranged' },
     blurb: 'Her hair caught fire the day she was born. The fire never lost.',
   },
   morvek: {
@@ -27,6 +29,7 @@ export const HEROES = {
     faction: 'dominion',
     base: { hp: 8, dice: 3, armor: 0, energy: 3, move: 3 },
     signature: 'ambush',
+    diceProfile: { ranged: 1, melee: 2, defense: 1, primary: 'melee' },
     blurb: 'You will hear his purr exactly once, and it will be too late.',
   },
   aldric: {
@@ -36,6 +39,7 @@ export const HEROES = {
     faction: 'accord',
     base: { hp: 9, dice: 2, armor: 1, energy: 2, move: 2 },
     signature: 'shield_wall',
+    diceProfile: { ranged: 0, melee: 2, defense: 1, primary: 'melee' },
     blurb: 'The last shield between the dark and the dawn — and he knows it.',
   },
   elowen: {
@@ -45,6 +49,7 @@ export const HEROES = {
     faction: 'accord',
     base: { hp: 8, dice: 2, armor: 0, energy: 4, move: 2 },
     signature: 'arcane_bolt',
+    diceProfile: { ranged: 2, melee: 0, defense: 1, primary: 'ranged' },
     blurb: 'She has read every book in Eldara. Twice. In the original starlight.',
   },
   torvald: {
@@ -54,6 +59,7 @@ export const HEROES = {
     faction: 'accord',
     base: { hp: 10, dice: 2, armor: 0, energy: 4, move: 2 },
     signature: 'mend',
+    diceProfile: { ranged: 0, melee: 2, defense: 1, primary: 'melee' },
     blurb: 'Half priest, half anvil. His prayers hit like hammers.',
   },
   // Wrenna and Ashka are deliberate stat-mirrors of each other (identical
@@ -65,6 +71,7 @@ export const HEROES = {
     faction: 'accord',
     base: { hp: 9, dice: 2, armor: 0, energy: 4, move: 2 },
     signature: 'pinning_shot',
+    diceProfile: { ranged: 2, melee: 0, defense: 1, primary: 'ranged' },
     blurb: 'The forest told her everything. She only had to stop talking first.',
   },
   ashka: {
@@ -74,6 +81,7 @@ export const HEROES = {
     faction: 'dominion',
     base: { hp: 9, dice: 2, armor: 0, energy: 4, move: 2 },
     signature: 'static_lash',
+    diceProfile: { ranged: 2, melee: 0, defense: 1, primary: 'ranged' },
     blurb: 'The sky owes her a debt. She collects it one bolt at a time.',
   },
 }

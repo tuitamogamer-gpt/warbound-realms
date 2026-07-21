@@ -7,8 +7,9 @@ A fully playable **3D digital fantasy adventure board game** for exactly 2 playe
 Two factions — the **Radiant Accord** and the **Emberclaw Dominion** — race across the realm of Aetheria:
 
 - **19 regions** on a 3D tabletop map — an outer ring joined by two inner crossroads and four far-corner wilds, so every capital has several roads out and there is always more than one way across
-- **6 unique heroes** (3 per faction), each with a signature ability and a **class pool of 5 trainable abilities** — buy them with gold at town Trainers, into slots that unlock at levels 2, 4 and 5
-- **Dice combat** against 9 creature types across three danger tiers — each with a distinct trait; use up to one ability and one consumable per combat round
+- **8 unique heroes** (4 per faction), each with a signature ability and a **class pool of trainable abilities** — buy them with gold at town Trainers, into slots that unlock at levels 2, 4 and 5
+- **Three-color dice combat** in two phases: a **🏹 ranged volley** fires before the enemy can answer, then the **⚔ melee clash** lands simultaneously with the enemy's strike, while **🛡 guard dice** block incoming hits — every class splits its dice differently
+- **13 creature types** across three danger tiers, each with a distinct trait; great beasts fight with **minions** that soak your hits and add dice, and fleeing leaves a creature **provoked** (extra clash dice next time). Slain creatures respawn — sometimes as **Elites** — and can drop **treasure caches**
 - **26 quests with live targets** — draw two, keep one, and reroll or abandon contracts in town
 - **XP and levels (1–5)**, talents, gold, and a **20-item shop** (weapons, armor, trinkets, and combat consumables)
 - **Round events with choices and shared objectives** that reshape each round (blood moons, caravans, storms...)

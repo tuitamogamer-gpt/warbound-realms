@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useGame } from '../game/store'
-import { CREATURES, creatureArt } from '../data/creatures'
+import { CREATURES, creatureArt, minionArt } from '../data/creatures'
+import { GAME } from '../data/constants'
 import { HEROES, heroArt } from '../data/heroes'
 import { ITEMS, itemArt } from '../data/items'
 import { ABILITIES, abilityArt, isHealOnly } from '../data/abilities'
@@ -8,12 +9,12 @@ import { effStats } from '../game/rules'
 import { sfx } from '../game/sfx'
 import ModalShell from './ModalShell'
 
-function Die({ value, hitOn, critFrom = 99, delay }) {
+function Die({ value, hitOn, critFrom = 99, delay, variant = '' }) {
   const isHit = value >= hitOn
   const isCrit = value >= critFrom
   return (
     <span
-      className={`die ${isCrit ? 'die-crit' : isHit ? 'die-hit' : 'die-miss'}`}
+      className={`die ${variant ? `die-${variant}` : ''} ${isCrit ? 'die-crit' : isHit ? 'die-hit' : 'die-miss'}`}
       style={{ animationDelay: `${delay}ms` }}
     >
       {value}
@@ -43,8 +44,8 @@ export default function CombatModal() {
     const was = prevOver.current
     prevOver.current = !!combat?.over
     if (was || !combat?.over) return
-    if (combat.heroWon) sfx.kill()
-    else if (combat.heroDied) sfx.death()
+    if (combat.heroDied) sfx.death()
+    else if (combat.heroWon) sfx.kill()
     else if (combat.fled) sfx.flee()
   }, [combat?.over]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -82,9 +83,12 @@ export default function CombatModal() {
   const traitName = typeof trait === 'string' ? trait : trait?.name
   const traitDesc = typeof trait === 'object' ? trait?.desc : null
   const defensePending = isPvp && (combat.pvpDefensePending || combat.phase === 'defender-choice')
-  const pvpHandoff = combat.pvpHandoff === undefined
-    ? defensePending ? 'defender' : !combat.over ? 'attacker' : null
-    : combat.pvpHandoff
+  // creature fights must never reach a handoff screen, whatever an old save carries
+  const pvpHandoff = !isPvp
+    ? null
+    : combat.pvpHandoff === undefined
+      ? defensePending ? 'defender' : !combat.over ? 'attacker' : null
+      : combat.pvpHandoff
   const defenseStage = pvpHandoff === 'defender'
     ? 'handoff-defender'
     : pvpHandoff === 'attacker'
@@ -150,6 +154,9 @@ export default function CombatModal() {
             <div className="combat-hp hp-hero">
               ❤️ {p.hp}/{eff.maxHp} · ⚡ {p.energy}/{eff.maxEnergy}
             </div>
+            <div className="combat-hp hp-hero dice-pools" title="Ranged volley strikes first (4+ hits) · melee clash (4+ hits) · guard blocks (5+)">
+              🏹 {eff.rangedDice} · ⚔ {eff.meleeDice} · 🛡 {eff.defenseDice}
+            </div>
           </div>
           <div className="combat-vs">
             <div className="vs-text">⚔</div>
@@ -162,28 +169,55 @@ export default function CombatModal() {
               className={combat.boss ? 'boss-img' : ''}
             />
             <div className="combatant-name">{foeName}</div>
-            <div className="combat-hp hp-creature">
+            <div
+              className="combat-hp hp-creature"
+              title={isPvp ? 'Ranged (4+) · melee (4+) · guard blocks (5+) · flat armor' : undefined}
+            >
               {isPvp
-                ? <>❤️ {defender.hp}/{defEff.maxHp} · 🎲 {defEff.dice} (hits 4+) · 🛡 {defEff.armor}</>
+                ? <>❤️ {defender.hp}/{defEff.maxHp} · 🏹 {defEff.rangedDice} · ⚔ {defEff.meleeDice} · 🛡 {defEff.defenseDice}{defEff.armor > 0 && <> · 🪨 {defEff.armor} armor</>}</>
                 : <>❤️ {combat.hp}/{combat.maxHp} · 🎲 {def.dice} (hits {def.hitOn}+)</>}
             </div>
+            {combat.threat > 0 && (
+              <div className="creature-trait threat-badge" title={`Provoked: +${combat.threat * GAME.THREAT_DICE} clash dice from escaped or won fights`}>
+                😡 Provoked +{combat.threat * GAME.THREAT_DICE}
+              </div>
+            )}
             {traitName && (
               <div className="creature-trait" title={traitDesc || traitName}>
                 {typeof trait === 'object' && trait.icon ? trait.icon : '◆'} {traitName}
               </div>
             )}
+            {(combat.minions?.length || 0) > 0 && (
+              <div className="minion-row" title={`${combat.minionName} — each adds +${combat.minionDice} clash die while alive; your hits strike them first`}>
+                {combat.minions.map((m, i) => (
+                  <span key={i} className={`minion-chip ${m.hp <= 0 ? 'minion-dead' : ''}`}>
+                    <img src={minionArt(combat.minionId)} alt={combat.minionName} />
+                    <span className="minion-hp">{Math.max(0, m.hp)}/{combat.minionMaxHp}</span>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {(combat.lastHeroRolls || combat.lastCreatureRolls) && (
+        {(combat.lastRangedRolls || combat.lastHeroRolls || combat.lastCreatureRolls || combat.lastDefenseRolls) && (
           <div className="dice-rows">
-            {combat.lastHeroRolls && (
+            {combat.lastRangedRolls && (
               <div className="dice-row">
-                <span className="dice-label">You:</span>
-                {combat.lastHeroRolls.map((v, i) => (
-                  <Die key={`${combat.rollId}-${i}`} value={v} hitOn={4} critFrom={combat.lastCritOn5 ? 5 : 6} delay={i * 70} />
+                <span className="dice-label">🏹 Volley:</span>
+                {combat.lastRangedRolls.map((v, i) => (
+                  <Die key={`${combat.rollId}-r${i}`} value={v} hitOn={4} critFrom={combat.lastCritOn5 ? 5 : 6} delay={i * 70} variant="ranged" />
                 ))}
                 {combat.lastAutoHits > 0 && <span className="auto-hits">+{combat.lastAutoHits} auto</span>}
+              </div>
+            )}
+            {combat.lastHeroRolls && (
+              <div className="dice-row">
+                <span className="dice-label">⚔ Clash:</span>
+                {combat.lastHeroRolls.map((v, i) => (
+                  <Die key={`${combat.rollId}-${i}`} value={v} hitOn={4} critFrom={combat.lastCritOn5 ? 5 : 6} delay={i * 70} variant="melee" />
+                ))}
+                {!combat.lastRangedRolls && combat.lastAutoHits > 0 && <span className="auto-hits">+{combat.lastAutoHits} auto</span>}
               </div>
             )}
             {combat.lastCreatureRolls && (
@@ -197,6 +231,14 @@ export default function CombatModal() {
                     critFrom={isPvp ? (defEff?.critOn5 ? 5 : 6) : 99}
                     delay={i * 70}
                   />
+                ))}
+              </div>
+            )}
+            {combat.lastDefenseRolls && (
+              <div className="dice-row">
+                <span className="dice-label">🛡 Guard:</span>
+                {combat.lastDefenseRolls.map((v, i) => (
+                  <Die key={`${combat.rollId}-d${i}`} value={v} hitOn={5} delay={i * 70} variant="defense" />
                 ))}
               </div>
             )}
@@ -276,8 +318,10 @@ export default function CombatModal() {
           </>
         ) : (
           <div className="combat-buttons">
-            <div className={`combat-result ${combat.heroWon ? 'good' : 'bad'}`}>
-              {combat.heroWon
+            <div className={`combat-result ${combat.heroWon && !combat.heroDied ? 'good' : 'bad'}`}>
+              {combat.heroWon && combat.heroDied
+                ? `${foeName} is slain — but ${p.name} falls with it!`
+                : combat.heroWon
                 ? isPvp ? `${foeName} is defeated!` : `${foeName} is slain!`
                 : combat.heroDied
                   ? `${p.name} has fallen...`

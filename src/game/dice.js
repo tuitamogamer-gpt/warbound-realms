@@ -3,9 +3,17 @@ export const d6 = (rng = Math.random) => 1 + Math.floor(rng() * 6)
 export const rollDice = (count, rng = Math.random) =>
   Array.from({ length: Math.max(0, count) }, () => d6(rng))
 
-// Heroes: 4-5 = 1 hit, 6 = 2 hits (crit). With critOn5, 5s also crit.
+// Melee dice: 4-5 = 1 hit, 6 = 2 hits (crit). With critOn5, 5s also crit.
 export const heroHits = (rolls, critOn5 = false) =>
   rolls.reduce((h, r) => h + (r >= (critOn5 ? 5 : 6) ? 2 : r >= 4 ? 1 : 0), 0)
+
+// Ranged dice score like melee (4-5 = 1 hit, 6 = 2 hits) — their edge is the
+// phase: the volley resolves before the enemy can answer at all.
+export const rangedHits = (rolls, critOn5 = false) =>
+  rolls.reduce((h, r) => h + (r >= (critOn5 ? 5 : 6) ? 2 : r >= 4 ? 1 : 0), 0)
+
+// Defense dice: each 5+ blocks one incoming hit before armor applies.
+export const defenseBlocks = (rolls) => rolls.reduce((b, r) => b + (r >= 5 ? 1 : 0), 0)
 
 // Creatures: hit on `hitOn`+
 export const creatureHits = (rolls, hitOn) => rolls.reduce((h, r) => h + (r >= hitOn ? 1 : 0), 0)

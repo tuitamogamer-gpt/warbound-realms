@@ -125,6 +125,7 @@ export const CREATURES = {
       armor: 1,
       armorPierce: 1,
     },
+    minions: { id: 'rime_spawn', name: 'Rime Spawn', count: 1, hp: 1, dice: 1 },
     blurb: 'Winter with teeth.',
   },
   infernal_colossus: {
@@ -143,6 +144,7 @@ export const CREATURES = {
       desc: 'A successful retaliation always deals at least 1 damage.',
       minimumDamage: 1,
     },
+    minions: { id: 'cinder_imp', name: 'Cinder Imps', count: 1, hp: 1, dice: 1 },
     blurb: 'A walking volcano with opinions.',
   },
   void_shrike: {
@@ -161,6 +163,7 @@ export const CREATURES = {
       desc: 'The first automatic hit each round is negated.',
       autoHitWard: 1,
     },
+    minions: { id: 'void_mote', name: 'Void Motes', count: 1, hp: 1, dice: 1 },
     blurb: 'A hole in the sky, shaped like a bird, hungry like a god.',
   },
   thistle_boar: {
@@ -216,6 +219,7 @@ export const CREATURES = {
       desc: '+2 attack dice in the first combat round.',
       firstRoundDice: 2,
     },
+    minions: { id: 'storm_hatchling', name: 'Storm Hatchlings', count: 1, hp: 1, dice: 1 },
     blurb: 'First comes the shadow. Then the thunder. Then the talons.',
   },
   vhalrax: {
@@ -238,6 +242,7 @@ export const CREATURES = {
       enrageBelow: 0.5,
       enrageDice: 2,
     },
+    minions: { id: 'bone_thrall', name: 'Bone Thrall', count: 2, hp: 1, dice: 1 },
     blurb: 'The dragon-lich tyrant of Blackspire. Slay him and win the war.',
   },
 }
@@ -245,3 +250,4 @@ export const CREATURES = {
 export const CREATURE_LIST = Object.values(CREATURES)
 export const creaturesOfTier = (tier) => CREATURE_LIST.filter((c) => c.tier === tier)
 export const creatureArt = (id) => `/assets/creatures/${id}.webp`
+export const minionArt = (id) => `/assets/minions/${id}.webp`

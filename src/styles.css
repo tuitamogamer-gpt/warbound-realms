@@ -363,6 +363,29 @@ button, input, [tabindex] { -webkit-tap-highlight-color: transparent; }
 }
 .pvp-defense p { color: #cbbb90; margin-bottom: 10px; }
 
+/* three-color dice + minions + threat */
+.die-ranged { border-color: #3d6f9e; background: #d9e7f2; color: #16324a; }
+.die-ranged.die-hit { background: #a9cbe8; border-color: #2c7bc9; color: #0e2b47; }
+.die-ranged.die-crit { background: #7fb6ff; border-color: #1f6dd0; color: #082346; box-shadow: 0 0 12px rgba(127,182,255,0.6); }
+.die-melee { border-color: #9e4a3d; background: #f2ded9; color: #4a1c16; }
+.die-melee.die-hit { background: #e8b3a9; border-color: #c94b2c; color: #47160e; }
+.die-melee.die-crit { background: #ff9b7f; border-color: #d0421f; color: #460f08; box-shadow: 0 0 12px rgba(255,155,127,0.6); }
+.die-defense { border-color: #3d9e57; background: #d9f2e0; color: #16491f; }
+.die-defense.die-hit { background: #a9e8bb; border-color: #2cc95c; color: #0e471c; }
+.dice-pools { font-size: 12.5px; color: #cbbb90; }
+.threat-badge { color: #ff8ba0; }
+.minion-row { display: flex; gap: 6px; justify-content: center; margin-top: 6px; }
+.minion-chip {
+  position: relative; width: 40px; height: 40px; border-radius: 8px; overflow: hidden;
+  border: 1px solid #7a5c2e; background: #241c10; display: inline-block;
+}
+.minion-chip img { width: 100%; height: 100%; object-fit: cover; }
+.minion-hp {
+  position: absolute; right: 1px; bottom: 1px; background: rgba(12,9,4,0.85);
+  font-size: 9.5px; font-weight: 700; color: #ffd75e; padding: 0 4px; border-radius: 5px;
+}
+.minion-dead { opacity: 0.3; filter: grayscale(1); }
+
 .shake { animation: shake 0.4s ease; }
 @keyframes shake {
   20% { transform: translate(-5px, 2px) rotate(-0.5deg); }

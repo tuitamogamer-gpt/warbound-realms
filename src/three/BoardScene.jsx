@@ -162,6 +162,7 @@ export default function BoardScene() {
   const caches = useGame((s) => s.caches)
   const bossSpawned = useGame((s) => s.bossSpawned)
   const bossHp = useGame((s) => s.bossHp)
+  const bossThreat = useGame((s) => s.bossThreat)
   const reachable = useGame(useShallow(reachableRegions))
   const currentIdx = useGame((s) =>
     s.screen === 'game' && s.players.length ? s.turnOrder[s.turnPos] : -1
@@ -274,7 +275,7 @@ export default function BoardScene() {
           reducedMotion={reducedMotion}
           locked={r.id === 'blackspire' && !bossSpawned}
           cacheGold={caches?.[r.id] || 0}
-          creatureSlot={r.id === 'blackspire' && bossSpawned && bossHp > 0 ? { defId: 'vhalrax', hp: bossHp } : creatures[r.id]}
+          creatureSlot={r.id === 'blackspire' && bossSpawned && bossHp > 0 ? { defId: 'vhalrax', hp: bossHp, threat: bossThreat } : creatures[r.id]}
           onClick={() => {
             if (inspectedRegionId === r.id && reachable.includes(r.id)) {
               sfx.move()
@@ -296,7 +297,7 @@ export default function BoardScene() {
       )}
       {bossSpawned && bossHp > 0 && (
         <Suspense fallback={null}>
-          <CreatureToken regionId="blackspire" slot={{ defId: 'vhalrax', hp: bossHp }} boss reducedMotion={reducedMotion} />
+          <CreatureToken regionId="blackspire" slot={{ defId: 'vhalrax', hp: bossHp, threat: bossThreat }} boss reducedMotion={reducedMotion} />
         </Suspense>
       )}
 

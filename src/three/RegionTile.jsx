@@ -208,6 +208,12 @@ export default function RegionTile({
                 {creatureDef.hp + (creatureSlot.elite ? GAME.ELITE_BONUS_HP : 0)} · 🎲 {creatureDef.dice} dice (hits {creatureDef.hitOn}+)
                 {!creatureDef.boss && ` · +${creatureDef.xp + (creatureSlot.elite ? GAME.ELITE_BONUS_REWARD : 0)} XP · +${creatureDef.gold + (creatureSlot.elite ? GAME.ELITE_BONUS_REWARD : 0)} gold · +${creatureDef.vp + (creatureSlot.elite ? GAME.ELITE_BONUS_REWARD : 0)} VP`}
                 {creatureDef.trait && <div>◆ {creatureDef.trait.name}: {creatureDef.trait.desc}</div>}
+                {(creatureSlot.threat || 0) > 0 && (
+                  <div style={{ color: '#ff8ba0' }}>😡 Provoked: +{creatureSlot.threat} clash dice</div>
+                )}
+                {creatureDef.minions && (
+                  <div>⚑ {creatureDef.minions.name} ×{creatureDef.minions.count} fight alongside it</div>
+                )}
               </div>
             )}
             {cacheGold > 0 && (

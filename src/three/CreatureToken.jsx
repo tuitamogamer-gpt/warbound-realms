@@ -106,6 +106,14 @@ export default function CreatureToken({ regionId, slot, boss = false, reducedMot
               )}
             </div>
             {def.trait && <div className="tip3d-trait">◆ {def.trait.name}: {def.trait.desc}</div>}
+            {(slot.threat || 0) > 0 && (
+              <div className="tip3d-trait" style={{ color: '#ff8ba0' }}>
+                😡 Provoked: +{slot.threat} clash dice
+              </div>
+            )}
+            {def.minions && (
+              <div className="tip3d-trait">⚑ {def.minions.name} ×{def.minions.count} fight alongside it</div>
+            )}
           </div>
         </Html>
       )}

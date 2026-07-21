@@ -385,6 +385,9 @@ describe('combat, quests, and inventory invariants', () => {
     useGame.setState((state) => {
       const player = selCurrentPlayer(state)
       player.armor = 99
+      // this test exercises retreat regeneration, not the minion screen —
+      // clear the Bone Thralls so the seeded hits land on Vhalrax himself
+      state.combat.minions = []
       state.rngState = seedForRolls(player.dice, (face) => face === 6)
     })
 
@@ -460,7 +463,7 @@ describe('combat, quests, and inventory invariants', () => {
 describe('persisted save compatibility', () => {
   it('publishes a versioned migration and restores safe defaults', async () => {
     const options = useGame.persist.getOptions()
-    expect(options.version).toBe(6)
+    expect(options.version).toBe(7)
     expect(options.migrate).toEqual(expect.any(Function))
     expect(options.merge).toEqual(expect.any(Function))
 
@@ -469,7 +472,7 @@ describe('persisted save compatibility', () => {
 
     expect(recovered.screen).toBe('menu')
     expect(recovered.players).toEqual([])
-    expect(recovered.saveVersion).toBe(6)
+    expect(recovered.saveVersion).toBe(7)
     expect(recovered.rngState).toEqual(expect.any(Number))
     expect(recovered.handoffPending).toBe(false)
     expect(recovered.tutorialCompleted).toBe(true)
@@ -502,6 +505,11 @@ describe('persisted save compatibility', () => {
     expect(migrated.round).toBe(4)
     expect(migrated.combat.id).toEqual(expect.any(Number))
     expect(migrated.combat.rolling).toBe(false)
+    // a v6 mid-creature-fight save must never rehydrate into the PvP handoff screen
+    expect(migrated.combat.pvp).toBe(false)
+    expect(migrated.combat.pvpDefensePending).toBe(false)
+    expect(migrated.combat.pvpHandoff).toBeNull()
+    expect(migrated.bossThreat).toBe(0)
     expect(migrated.handoffPending).toBe(false)
     expect(migrated.tutorialCompleted).toBe(true)
   })
