@@ -4,6 +4,7 @@ import { Billboard, useTexture, Text, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { REGIONS } from '../data/regions'
 import { CREATURES, creatureArt } from '../data/creatures'
+import { GAME } from '../data/constants'
 
 const TIER_MARKS = { 1: '☠', 2: '☠☠', 3: '☠☠☠', 4: '☠☠☠☠' }
 
@@ -13,9 +14,11 @@ export default function CreatureToken({ regionId, slot, boss = false, reducedMot
   const group = useRef()
   const [hovered, setHovered] = useState(false)
   const pos = REGIONS[regionId].pos
-  const size = boss ? 1.2 : 0.72
-  const hpFrac = slot.hp / def.hp
-  const wounded = slot.hp < def.hp
+  const elite = !!slot.elite
+  const size = boss ? 1.2 : elite ? 0.8 : 0.72
+  const maxHp = def.hp + (elite ? GAME.ELITE_BONUS_HP : 0)
+  const hpFrac = slot.hp / maxHp
+  const wounded = slot.hp < maxHp
 
   useFrame(({ clock }) => {
     if (!group.current) return
@@ -47,8 +50,20 @@ export default function CreatureToken({ regionId, slot, boss = false, reducedMot
         </mesh>
         <mesh position={[0, 0, -0.011]}>
           <planeGeometry args={[size + 0.09, size + 0.09]} />
-          <meshStandardMaterial color={boss ? '#39ff6a' : '#101010'} side={THREE.DoubleSide} />
+          <meshStandardMaterial color={boss ? '#39ff6a' : elite ? '#c9a227' : '#101010'} side={THREE.DoubleSide} />
         </mesh>
+        {elite && (
+          <Text
+            position={[0, size * 0.62 + 0.16, 0.01]}
+            fontSize={0.22}
+            color="#ffd75e"
+            outlineWidth={0.014}
+            outlineColor="#000000"
+            anchorX="center"
+          >
+            👑
+          </Text>
+        )}
         {/* hp bar */}
         <group position={[0, -size * 0.62 - 0.05, 0.01]}>
           <mesh>
@@ -69,7 +84,7 @@ export default function CreatureToken({ regionId, slot, boss = false, reducedMot
           outlineColor="#000000"
           anchorX="center"
         >
-          {`${def.name}  ${TIER_MARKS[def.tier] || ''}`}
+          {`${elite ? 'Elite ' : ''}${def.name}  ${TIER_MARKS[def.tier] || ''}`}
         </Text>
       </Billboard>
 
@@ -77,12 +92,18 @@ export default function CreatureToken({ regionId, slot, boss = false, reducedMot
         <Html position={[0, size * 1.5 + 0.6, 0]} center style={{ pointerEvents: 'none' }} zIndexRange={[30, 20]}>
           <div className="tip3d">
             <div className="tip3d-title">
-              {def.name} <span style={{ color: boss ? '#9ae66e' : '#d08c3a' }}>{boss ? 'BOSS' : TIER_MARKS[def.tier]}</span>
+              {elite ? '👑 Elite ' : ''}{def.name} <span style={{ color: boss ? '#9ae66e' : '#d08c3a' }}>{boss ? 'BOSS' : TIER_MARKS[def.tier]}</span>
             </div>
             <div className="tip3d-desc">{def.blurb}</div>
             <div className="tip3d-creature">
-              ❤️ {slot.hp}/{def.hp} · 🎲 {def.dice} dice, hits {def.hitOn}+
-              {!boss && <> · rewards +{def.xp} XP, +{def.gold} 💰, +{def.vp} 🏆</>}
+              ❤️ {slot.hp}/{maxHp} · 🎲 {def.dice} dice, hits {def.hitOn}+
+              {!boss && (
+                <>
+                  {' '}· rewards +{def.xp + (elite ? GAME.ELITE_BONUS_REWARD : 0)} XP, +
+                  {def.gold + (elite ? GAME.ELITE_BONUS_REWARD : 0)} 💰, +
+                  {def.vp + (elite ? GAME.ELITE_BONUS_REWARD : 0)} 🏆
+                </>
+              )}
             </div>
             {def.trait && <div className="tip3d-trait">◆ {def.trait.name}: {def.trait.desc}</div>}
           </div>

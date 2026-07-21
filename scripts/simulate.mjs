@@ -10,8 +10,8 @@ import { effStats } from '../src/game/rules.js'
 import { reachableRegions, selCurrentPlayer, useGame } from '../src/game/store.js'
 
 const HEROES_BY_FACTION = {
-  accord: ['aldric', 'elowen', 'torvald'],
-  dominion: ['grosh', 'zyra', 'morvek'],
+  accord: ['aldric', 'elowen', 'torvald', 'wrenna'],
+  dominion: ['grosh', 'zyra', 'morvek', 'ashka'],
 }
 
 const DEFAULT_GAMES = 100

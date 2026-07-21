@@ -43,7 +43,8 @@ export default function Rules({ onClose }) {
             <li>Visit a town <b>Trainer</b> to buy class abilities with gold — attacks, wards and passives unique to your hero.</li>
             <li>Gold also buys <b>items</b> in towns: one weapon, one armor, one trinket, plus up to 3 consumables.</li>
             <li>Press <b>C</b> (or click your portrait) to open the <b>character sheet</b> with equipment, spells and record.</li>
-            <li>Slain creatures return to their region two rounds later.</li>
+            <li>Slain creatures return to their region two rounds later — sometimes as <b>👑 Elites</b> with extra health that pay out +1 XP, gold and VP.</li>
+            <li>Slain creatures sometimes drop a <b>💰 treasure cache</b> on their region — the first hero to arrive loots it.</li>
           </ul>
 
           <h3>Duels (PvP)</h3>

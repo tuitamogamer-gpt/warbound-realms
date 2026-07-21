@@ -15,6 +15,11 @@ export const GAME = {
   ALLY_ASSIST_HP: 3,
   ALLY_ASSIST_ENERGY: 1,
   QUEST_REROLL_COST: 1,
+  ELITE_CHANCE: 0.25, // chance a respawning creature returns as an elite
+  ELITE_BONUS_HP: 2,
+  ELITE_BONUS_REWARD: 1, // extra XP, gold and VP for slaying an elite
+  CACHE_CHANCE: 0.2, // chance a slain creature drops a treasure cache
+  CACHE_GOLD: 2,
 }
 
 // cumulative XP needed to reach level 1..5

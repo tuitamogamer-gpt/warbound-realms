@@ -88,10 +88,21 @@ const hasPendingDecision = (s) =>
     s.celebrations.length || currentPlayer(s)?.pendingTalents?.length
   )
 
-const spawnCreature = (s, regionId) => {
+const spawnCreature = (s, regionId, { allowElite = false } = {}) => {
   const tier = REGIONS[regionId].tier
   const def = randomPick(s, creaturesOfTier(tier))
-  s.creatures[regionId] = { defId: def.id, hp: def.hp, respawnAtRound: null }
+  // Respawning creatures can return hardened by the last fight. Elites carry
+  // extra health and pay out one bonus XP/gold/VP when slain.
+  const elite = allowElite && random(s) < GAME.ELITE_CHANCE
+  s.creatures[regionId] = {
+    defId: def.id,
+    hp: def.hp + (elite ? GAME.ELITE_BONUS_HP : 0),
+    elite,
+    respawnAtRound: null,
+  }
+  if (elite) {
+    addLog(s, `An elite ${def.name} claims ${REGIONS[regionId].name}!`, 'bad')
+  }
 }
 
 const questHasLiveTarget = (s, quest) => {
@@ -280,8 +291,8 @@ const beginTurn = (s) => {
     p.hp = effStats(p).maxHp
     addLog(s, `${p.name} returns to ${REGIONS[p.region].name}, restored.`, '')
   }
-  const penalty = eventMod(s).movePenalty || 0
-  s.movesLeft = Math.max(1, effStats(p).move - penalty)
+  const mod = eventMod(s)
+  s.movesLeft = Math.max(1, effStats(p).move - (mod.movePenalty || 0) + (mod.moveBonus || 0))
   s.actionUsed = false
   openQuestDraw(s)
 }
@@ -314,11 +325,11 @@ const beginRound = (s) => {
     finishRoundCheck(s)
     return
   }
-  // respawn due creatures
+  // respawn due creatures (respawns may return as elites)
   for (const rid of CREATURE_REGIONS) {
     const slot = s.creatures[rid]
     if (!slot && s.respawnQueue[rid] && s.respawnQueue[rid] <= s.round) {
-      spawnCreature(s, rid)
+      spawnCreature(s, rid, { allowElite: true })
       delete s.respawnQueue[rid]
     }
   }
@@ -345,11 +356,12 @@ const beginRound = (s) => {
     if (inst.xpAll) grantXp(s, p, inst.xpAll)
     if (inst.goldAll) p.gold += inst.goldAll
     if (inst.damageAll) p.hp = Math.max(1, p.hp - inst.damageAll)
+    if (inst.energyAll) p.energy = Math.min(effStats(p).maxEnergy, p.energy + inst.energyAll)
   }
   if (inst.respawnAll) {
     for (const rid of CREATURE_REGIONS) {
       if (!s.creatures[rid]) {
-        spawnCreature(s, rid)
+        spawnCreature(s, rid, { allowElite: true })
         delete s.respawnQueue[rid]
       }
     }
@@ -664,6 +676,7 @@ export const useGame = create(
     questDeck: [],
     creatures: {},
     respawnQueue: {},
+    caches: {},
     bossSpawned: false,
     bossHp: 0,
     bossDamageByFaction: { accord: 0, dominion: 0 },
@@ -715,6 +728,7 @@ export const useGame = create(
         s.round = 0
         s.creatures = {}
         s.respawnQueue = {}
+        s.caches = {}
         for (const rid of CREATURE_REGIONS) spawnCreature(s, rid)
         s.bossSpawned = false
         s.bossHp = 0
@@ -777,6 +791,7 @@ export const useGame = create(
         s.questDeck = []
         s.creatures = {}
         s.respawnQueue = {}
+        s.caches = {}
         s.bossSpawned = false
         s.bossHp = 0
         s.bossDamageByFaction = { accord: 0, dominion: 0 }
@@ -978,6 +993,14 @@ export const useGame = create(
         p.region = regionId
         s.movesLeft -= 1
         addLog(s, `${p.name} travels to ${dest.name}.`)
+        // first hero to arrive scoops up any dropped treasure cache
+        if (s.caches[regionId]) {
+          const found = s.caches[regionId]
+          delete s.caches[regionId]
+          p.gold += found
+          addLog(s, `${p.name} loots a treasure cache (+${found} gold)!`, 'good')
+          addToast(s, `💰 ${p.name} loots a cache (+${found} gold)!`, 'level')
+        }
         checkVisitQuests(s, p)
         checkEventObjective(s, p)
       }),
@@ -1193,11 +1216,14 @@ export const useGame = create(
           if (p.region !== 'blackspire' || !s.bossSpawned || s.bossHp <= 0) return
           creatureDef = CREATURES.vhalrax
           hp = s.bossHp
-        } else {
+        }
+        let elite = false
+        if (!boss) {
           const slot = s.creatures[p.region]
           if (!slot) return
           creatureDef = CREATURES[slot.defId]
           hp = slot.hp
+          elite = !!slot.elite
         }
         s.actionUsed = true
         s.combatSeq += 1
@@ -1207,8 +1233,9 @@ export const useGame = create(
           regionId: p.region,
           defId: creatureDef.id,
           boss,
+          elite,
           hp,
-          maxHp: creatureDef.hp,
+          maxHp: creatureDef.hp + (elite ? GAME.ELITE_BONUS_HP : 0),
           round: 1,
           over: false,
           heroWon: false,
@@ -1254,7 +1281,7 @@ export const useGame = create(
         const trait = creatureDef.trait || {}
 
         let bonusDice = c.elixirDice
-        let autoHits = Math.max(0, (c.elixirAutoHits || 0) - (trait.autoHitWard || 0))
+        let autoHits = c.elixirAutoHits || 0
         let bonusArmor = c.elixirArmor || 0 // consumables (Stoneskin Draught)
         c.elixirDice = 0 // one-shot consumables empower exactly one roll
         c.elixirAutoHits = 0
@@ -1292,6 +1319,9 @@ export const useGame = create(
           }
         }
         if (eff.firstStrike && c.round === 1) noRetaliation = true
+
+        // the ward negates automatic hits from any source (elixirs AND abilities)
+        autoHits = Math.max(0, autoHits - (trait.autoHitWard || 0))
 
         // hero attack
         const heroDiceCount = Math.max(0, eff.dice + (ev.heroDice || 0) + bonusDice - (trait.heroDiceDown || 0))
@@ -1333,9 +1363,12 @@ export const useGame = create(
             }
             return
           }
-          const gold = creatureDef.gold + eff.goldPerKill
+          const eliteBonus = c.elite ? GAME.ELITE_BONUS_REWARD : 0
+          const gold = creatureDef.gold + eff.goldPerKill + eliteBonus
+          const xpGain = creatureDef.xp + eliteBonus
+          const vpGain = creatureDef.vp + eliteBonus
           p.gold += gold
-          p.vp += creatureDef.vp
+          p.vp += vpGain
           p.kills += 1
           if (eff.killHeal > 0 && p.hp < eff.maxHp) {
             p.hp = Math.min(eff.maxHp, p.hp + eff.killHeal)
@@ -1343,9 +1376,16 @@ export const useGame = create(
           }
           s.creatures[c.regionId] = null
           s.respawnQueue[c.regionId] = s.round + 2
-          c.log.unshift({ text: `${creatureDef.name} is slain! +${creatureDef.xp} XP, +${gold} gold, +${creatureDef.vp} VP`, cls: 'good' })
-          addLog(s, `${p.name} slays ${creatureDef.name} (+${creatureDef.xp} XP, +${gold} gold, +${creatureDef.vp} VP).`, 'good')
-          grantXp(s, p, creatureDef.xp)
+          // slain creatures sometimes leave a treasure cache on the region
+          if (random(s) < GAME.CACHE_CHANCE) {
+            s.caches[c.regionId] = GAME.CACHE_GOLD
+            c.log.unshift({ text: `It drops a treasure cache (💰${GAME.CACHE_GOLD}) on ${REGIONS[c.regionId].name}!`, cls: 'good' })
+            addLog(s, `A treasure cache (${GAME.CACHE_GOLD} gold) lies in ${REGIONS[c.regionId].name}.`, 'event')
+          }
+          const eliteTag = c.elite ? 'Elite ' : ''
+          c.log.unshift({ text: `${eliteTag}${creatureDef.name} is slain! +${xpGain} XP, +${gold} gold, +${vpGain} VP`, cls: 'good' })
+          addLog(s, `${p.name} slays ${eliteTag}${creatureDef.name} (+${xpGain} XP, +${gold} gold, +${vpGain} VP).`, 'good')
+          grantXp(s, p, xpGain)
           checkKillQuests(s, p, creatureDef, c.regionId)
           return
         }
@@ -1496,6 +1536,7 @@ export const useGame = create(
             accord: Number(state.bossDamageByFaction?.accord) || 0,
             dominion: Number(state.bossDamageByFaction?.dominion) || 0,
           },
+          caches: state.caches && typeof state.caches === 'object' ? state.caches : {},
           purchaseRequestIdsThisTurn: Array.isArray(state.purchaseRequestIdsThisTurn)
             ? state.purchaseRequestIdsThisTurn
             : [],

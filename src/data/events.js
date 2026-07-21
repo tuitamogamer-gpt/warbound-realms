@@ -100,6 +100,47 @@ export const EVENTS = {
       reward: { vp: 2 },
     },
   },
+  gilded_courier: {
+    id: 'gilded_courier',
+    name: 'The Gilded Courier',
+    desc: 'A royal courier crosses the realm — the first hero decides what to do with the satchel.',
+    choices: [
+      {
+        id: 'take_purse',
+        name: 'Take the Purse',
+        desc: 'Gain 2 gold.',
+        effect: { goldCurrent: 2 },
+      },
+      {
+        id: 'carry_word',
+        name: 'Carry the Word',
+        desc: 'Gain 1 experience.',
+        effect: { xpCurrent: 1 },
+      },
+    ],
+  },
+  war_drums: {
+    id: 'war_drums',
+    name: 'War Drums',
+    desc: 'The first hero to reach Stormwatch Bridge claims 2 victory points.',
+    objective: {
+      region: 'stormwatch_bridge',
+      text: 'Reach Stormwatch Bridge first.',
+      reward: { vp: 2 },
+    },
+  },
+  long_roads: {
+    id: 'long_roads',
+    name: 'Long Roads',
+    desc: 'All heroes have +1 movement this round.',
+    mod: { moveBonus: 1 },
+  },
+  kindled_spirits: {
+    id: 'kindled_spirits',
+    name: 'Kindled Spirits',
+    desc: 'Every hero immediately gains 1 energy.',
+    instant: { energyAll: 1 },
+  },
 }
 
 export const EVENT_LIST = Object.values(EVENTS)

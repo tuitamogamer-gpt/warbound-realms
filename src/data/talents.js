@@ -136,6 +136,40 @@ export const TALENTS = {
     id: 'torvald_blessed_plate', heroId: 'torvald', level: 4, icon: '✝️',
     name: 'Blessed Plate', desc: '+1 armor.', effects: { armor: 1 },
   },
+
+  wrenna_thistleheart: {
+    id: 'wrenna_thistleheart', heroId: 'wrenna', level: 2, icon: '🌿',
+    name: 'Thistleheart', desc: '+3 max health.', effects: { maxHp: 3 },
+  },
+  wrenna_fernpath: {
+    id: 'wrenna_fernpath', heroId: 'wrenna', level: 2, icon: '🍃',
+    name: 'Fernpath', desc: '+1 movement.', effects: { move: 1 },
+  },
+  wrenna_deadeye: {
+    id: 'wrenna_deadeye', heroId: 'wrenna', level: 4, icon: '🏹',
+    name: 'Deadeye', desc: '+1 attack die.', effects: { dice: 1 },
+  },
+  wrenna_barkweave: {
+    id: 'wrenna_barkweave', heroId: 'wrenna', level: 4, icon: '🪵',
+    name: 'Barkweave', desc: '+1 armor.', effects: { armor: 1 },
+  },
+
+  ashka_stormblood: {
+    id: 'ashka_stormblood', heroId: 'ashka', level: 2, icon: '⛈️',
+    name: 'Stormblood', desc: '+3 max health.', effects: { maxHp: 3 },
+  },
+  ashka_galestep: {
+    id: 'ashka_galestep', heroId: 'ashka', level: 2, icon: '💨',
+    name: 'Galestep', desc: '+1 movement.', effects: { move: 1 },
+  },
+  ashka_thunderfist: {
+    id: 'ashka_thunderfist', heroId: 'ashka', level: 4, icon: '⚡',
+    name: 'Thunderfist', desc: '+1 attack die.', effects: { dice: 1 },
+  },
+  ashka_stoneward: {
+    id: 'ashka_stoneward', heroId: 'ashka', level: 4, icon: '🗿',
+    name: 'Stoneward', desc: '+1 armor.', effects: { armor: 1 },
+  },
 }
 
 export const talentsForLevel = (level, heroId = null) =>

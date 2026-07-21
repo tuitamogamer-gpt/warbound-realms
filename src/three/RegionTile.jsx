@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { useTexture, Text, Html } from '@react-three/drei'
 import { regionArt } from '../data/regions'
 import { CREATURES } from '../data/creatures'
-import { FACTIONS } from '../data/constants'
+import { FACTIONS, GAME } from '../data/constants'
 
 const TIER_COLORS = {
   0: '#c9a227', // towns — gold
@@ -35,6 +35,7 @@ export default function RegionTile({
   reducedMotion,
   locked,
   creatureSlot,
+  cacheGold = 0,
   onClick,
 }) {
   const tex = useTexture(regionArt(region.id))
@@ -154,6 +155,19 @@ export default function RegionTile({
         </Text>
       )}
 
+      {cacheGold > 0 && (
+        <Text
+          position={[-r * 0.55, 0.32, -r * 0.4]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          fontSize={0.4}
+          color="#ffd75e"
+          outlineWidth={0.02}
+          outlineColor="#000000"
+        >
+          💰
+        </Text>
+      )}
+
       <Text
         position={[0, 0.17, r + 0.42]}
         rotation={[-Math.PI / 2.6, 0, 0]}
@@ -190,9 +204,15 @@ export default function RegionTile({
             <div className="tip3d-desc">{region.desc}</div>
             {creatureDef && (
               <div className="tip3d-creature">
-                ⚔ {creatureDef.name} — ❤️ {creatureSlot.hp}/{creatureDef.hp} · 🎲 {creatureDef.dice} dice (hits {creatureDef.hitOn}+)
-                {!creatureDef.boss && ` · +${creatureDef.xp} XP · +${creatureDef.gold} gold · +${creatureDef.vp} VP`}
+                ⚔ {creatureSlot.elite ? '👑 Elite ' : ''}{creatureDef.name} — ❤️ {creatureSlot.hp}/
+                {creatureDef.hp + (creatureSlot.elite ? GAME.ELITE_BONUS_HP : 0)} · 🎲 {creatureDef.dice} dice (hits {creatureDef.hitOn}+)
+                {!creatureDef.boss && ` · +${creatureDef.xp + (creatureSlot.elite ? GAME.ELITE_BONUS_REWARD : 0)} XP · +${creatureDef.gold + (creatureSlot.elite ? GAME.ELITE_BONUS_REWARD : 0)} gold · +${creatureDef.vp + (creatureSlot.elite ? GAME.ELITE_BONUS_REWARD : 0)} VP`}
                 {creatureDef.trait && <div>◆ {creatureDef.trait.name}: {creatureDef.trait.desc}</div>}
+              </div>
+            )}
+            {cacheGold > 0 && (
+              <div className="tip3d-creature" style={{ color: '#ffd75e' }}>
+                💰 Treasure cache — the first hero to arrive loots {cacheGold} gold.
               </div>
             )}
             {locked && <div className="tip3d-locked">Sealed until Vhalrax awakens (round 6)</div>}

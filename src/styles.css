@@ -94,7 +94,7 @@ button, input, [tabindex] { -webkit-tap-highlight-color: transparent; }
 .name-input:focus { outline: none; border-color: var(--gold-dim); }
 .faction-tag { font-weight: 700; font-size: 14px; letter-spacing: 0.5px; }
 
-.hero-picker { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.hero-picker { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
 .hero-card {
   background: #1d1610; border: 2px solid transparent; border-radius: 10px; padding: 5px;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -661,7 +661,7 @@ button, input, [tabindex] { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 900px) {
   .side-left { width: 220px; }
   .side-right { width: 200px; }
-  .hero-picker { grid-template-columns: repeat(3, 1fr); }
+  .hero-picker { grid-template-columns: repeat(4, 1fr); }
   .topbar-title { display: none; }
 }
 
@@ -819,7 +819,7 @@ button, input, [tabindex] { -webkit-tap-highlight-color: transparent; }
   .menu-resume { min-height: 220px; }
   .setup-head { align-items: stretch; flex-direction: column; }
   .name-input { width: 100%; min-height: 44px; }
-  .hero-picker { grid-template-columns: repeat(3, 1fr); }
+  .hero-picker { grid-template-columns: repeat(4, 1fr); }
   .hero-card { min-height: 44px; }
   .hero-name { font-size: 11px; }
   .hero-class { font-size: 9px; }

@@ -197,6 +197,70 @@ export const ABILITIES = {
     name: 'Benediction', desc: '+1 extra energy at the end of your turn.',
     effect: { regen: 1 },
   },
+
+  // ---- Wildkeeper Ranger (Wrenna) — mirrored with Ashka's kit ----
+  pinning_shot: {
+    id: 'pinning_shot', heroId: 'wrenna', signature: true, type: 'active', energy: 2,
+    name: 'Pinning Shot', desc: '+1 die, and the enemy rolls 1 fewer die this round.',
+    effect: { bonusDice: 1, enemyDiceDown: 1 },
+  },
+  triple_volley: {
+    id: 'triple_volley', heroId: 'wrenna', type: 'active', cost: 7, energy: 3,
+    name: 'Triple Volley', desc: 'Deal 3 automatic hits this combat round.',
+    effect: { autoHits: 3 },
+  },
+  thornguard: {
+    id: 'thornguard', heroId: 'wrenna', type: 'active', cost: 6, energy: 2,
+    name: 'Thornguard', desc: 'Take no damage this combat round.',
+    effect: { noDamage: true },
+  },
+  trailblazer: {
+    id: 'trailblazer', heroId: 'wrenna', type: 'passive', cost: 5,
+    name: 'Trailblazer', desc: '+1 movement.',
+    effect: { move: 1 },
+  },
+  predators_rhythm: {
+    id: 'predators_rhythm', heroId: 'wrenna', type: 'passive', cost: 5,
+    name: "Predator's Rhythm", desc: 'Heal 2 whenever you slay a creature.',
+    effect: { killHeal: 2 },
+  },
+  keen_instincts: {
+    id: 'keen_instincts', heroId: 'wrenna', type: 'passive', cost: 7,
+    name: 'Keen Instincts', desc: '+1 max energy; +1 attack die on the first round of every combat.',
+    effect: { energy: 1, firstRoundDice: 1 },
+  },
+
+  // ---- Orc Stormseer (Ashka) — mirrored with Wrenna's kit ----
+  static_lash: {
+    id: 'static_lash', heroId: 'ashka', signature: true, type: 'active', energy: 2,
+    name: 'Static Lash', desc: '+1 die, and the enemy rolls 1 fewer die this round.',
+    effect: { bonusDice: 1, enemyDiceDown: 1 },
+  },
+  chain_lightning: {
+    id: 'chain_lightning', heroId: 'ashka', type: 'active', cost: 7, energy: 3,
+    name: 'Chain Lightning', desc: 'Deal 3 automatic hits this combat round.',
+    effect: { autoHits: 3 },
+  },
+  earthhide_ward: {
+    id: 'earthhide_ward', heroId: 'ashka', type: 'active', cost: 6, energy: 2,
+    name: 'Earthhide Ward', desc: 'Take no damage this combat round.',
+    effect: { noDamage: true },
+  },
+  windwalk: {
+    id: 'windwalk', heroId: 'ashka', type: 'passive', cost: 5,
+    name: 'Windwalk', desc: '+1 movement.',
+    effect: { move: 1 },
+  },
+  spirit_feast: {
+    id: 'spirit_feast', heroId: 'ashka', type: 'passive', cost: 5,
+    name: 'Spirit Feast', desc: 'Heal 2 whenever you slay a creature.',
+    effect: { killHeal: 2 },
+  },
+  storm_omen: {
+    id: 'storm_omen', heroId: 'ashka', type: 'passive', cost: 7,
+    name: 'Storm Omen', desc: '+1 max energy; +1 attack die on the first round of every combat.',
+    effect: { energy: 1, firstRoundDice: 1 },
+  },
 }
 
 export const ABILITY_LIST = Object.values(ABILITIES)

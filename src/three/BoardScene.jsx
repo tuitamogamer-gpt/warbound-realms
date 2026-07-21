@@ -159,6 +159,7 @@ export default function BoardScene() {
   const [glKey, setGlKey] = useState(0)
   const players = useGame((s) => s.players)
   const creatures = useGame((s) => s.creatures)
+  const caches = useGame((s) => s.caches)
   const bossSpawned = useGame((s) => s.bossSpawned)
   const bossHp = useGame((s) => s.bossHp)
   const reachable = useGame(useShallow(reachableRegions))
@@ -272,6 +273,7 @@ export default function BoardScene() {
           questTarget={questTargets.has(r.id)}
           reducedMotion={reducedMotion}
           locked={r.id === 'blackspire' && !bossSpawned}
+          cacheGold={caches?.[r.id] || 0}
           creatureSlot={r.id === 'blackspire' && bossSpawned && bossHp > 0 ? { defId: 'vhalrax', hp: bossHp } : creatures[r.id]}
           onClick={() => {
             if (inspectedRegionId === r.id && reachable.includes(r.id)) {

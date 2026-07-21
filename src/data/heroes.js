@@ -56,6 +56,26 @@ export const HEROES = {
     signature: 'mend',
     blurb: 'Half priest, half anvil. His prayers hit like hammers.',
   },
+  // Wrenna and Ashka are deliberate stat-mirrors of each other (identical
+  // numbers, mirrored kits) so adding them cannot tilt faction balance.
+  wrenna: {
+    id: 'wrenna',
+    name: 'Wrenna Thistledown',
+    title: 'Wildkeeper Ranger',
+    faction: 'accord',
+    base: { hp: 9, dice: 2, armor: 0, energy: 4, move: 2 },
+    signature: 'pinning_shot',
+    blurb: 'The forest told her everything. She only had to stop talking first.',
+  },
+  ashka: {
+    id: 'ashka',
+    name: 'Ashka Stormcaller',
+    title: 'Orc Stormseer',
+    faction: 'dominion',
+    base: { hp: 9, dice: 2, armor: 0, energy: 4, move: 2 },
+    signature: 'static_lash',
+    blurb: 'The sky owes her a debt. She collects it one bolt at a time.',
+  },
 }
 
 export const HERO_LIST = Object.values(HEROES)

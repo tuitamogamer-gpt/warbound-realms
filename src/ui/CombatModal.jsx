@@ -55,7 +55,7 @@ export default function CombatModal() {
   const defender = isPvp ? players[combat.targetIdx] : null
   const def = isPvp ? null : CREATURES[combat.defId]
   const defEff = isPvp ? effStats(defender) : null
-  const foeName = isPvp ? defender.name : def.name
+  const foeName = isPvp ? defender.name : `${combat.elite ? '👑 Elite ' : ''}${def.name}`
   const eff = effStats(p)
   const activeAbilities = (p.abilities || [])
     .map((id) => ABILITIES[id])
