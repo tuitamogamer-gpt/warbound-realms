@@ -27,7 +27,7 @@ function seedForPattern(predicates) {
     for (const accepts of predicates) {
       const result = nextRandom(state)
       state = result.state
-      const face = 1 + Math.floor(result.value * 6)
+      const face = 1 + Math.floor(result.value * 8)
       if (!accepts(face)) {
         valid = false
         break
@@ -347,12 +347,12 @@ describe('combat, quests, and inventory invariants', () => {
     const defenderCounterPool = defenderEff.rangedDice + defenderEff.meleeDice + 1
     const predicates = [
       ...Array.from({ length: defenderEff.defenseDice }, (_, index) =>
-        index === 0 ? (face) => face >= 5 : (face) => face < 5),
+        index === 0 ? (face) => face >= 6 : (face) => face < 6),
       ...Array.from({ length: attackerEff.rangedDice }, (_, index) =>
-        index === 0 ? (face) => face >= 4 && face < 6 : (face) => face < 4),
+        index === 0 ? (face) => face >= 5 && face < 8 : (face) => face < 5),
       ...Array.from({ length: attackerEff.meleeDice }, (_, index) =>
-        index === 0 ? (face) => face >= 4 && face < 6 : (face) => face < 4),
-      ...Array.from({ length: defenderCounterPool }, () => (face) => face < 4),
+        index === 0 ? (face) => face >= 5 && face < 8 : (face) => face < 5),
+      ...Array.from({ length: defenderCounterPool }, () => (face) => face < 5),
       ...Array.from({ length: attackerEff.defenseDice }, () => () => true),
     ]
     useGame.setState((state) => {
@@ -364,7 +364,7 @@ describe('combat, quests, and inventory invariants', () => {
 
     const after = useGame.getState()
     expect(after.combat.lastDefenderDefenseRolls).toHaveLength(defenderEff.defenseDice)
-    expect(after.combat.lastDefenderDefenseRolls.filter((face) => face >= 5)).toHaveLength(1)
+    expect(after.combat.lastDefenderDefenseRolls.filter((face) => face >= 6)).toHaveLength(1)
     // The single green guard stops blue; it is spent, so the red hit lands.
     expect(after.players[after.combat.targetIdx].hp).toBe(defenderHp - 1)
   })
@@ -429,7 +429,7 @@ describe('combat, quests, and inventory invariants', () => {
     const predicates = [
       ...Array.from({ length: effective.rangedDice }, () => (face) => face < threat),
       ...Array.from({ length: effective.meleeDice }, (_, index) =>
-        index === 0 ? (face) => face === 6 : (face) => face < threat),
+        index === 0 ? (face) => face === 8 : (face) => face < threat),
       ...Array.from({ length: effective.defenseDice }, () => (face) => face < threat),
     ]
     useGame.setState((state) => {
@@ -493,9 +493,9 @@ describe('combat, quests, and inventory invariants', () => {
     const threat = CREATURES.mire_creeper.threat
     const predicates = [
       ...Array.from({ length: effective.rangedDice }, (_, index) =>
-        index === 0 ? (face) => face === 6 : (face) => face < threat),
+        index === 0 ? (face) => face === 8 : (face) => face < threat),
       ...Array.from({ length: effective.meleeDice }, (_, index) =>
-        index === 0 ? (face) => face === 6 : (face) => face < threat),
+        index === 0 ? (face) => face === 8 : (face) => face < threat),
       ...Array.from({ length: effective.defenseDice }, () => (face) => face < threat),
     ]
     useGame.setState((state) => {
@@ -589,7 +589,7 @@ describe('combat, quests, and inventory invariants', () => {
       // this test exercises retreat regeneration, not the minion screen —
       // clear the Bone Thralls so the seeded hits land on Vhalrax himself
       state.combat.minions = []
-      state.rngState = seedForRolls(player.dice, (face) => face === 6)
+      state.rngState = seedForRolls(player.dice, (face) => face === 8)
     })
 
     useGame.getState().combatRound(null, 1)
@@ -632,7 +632,7 @@ describe('combat, quests, and inventory invariants', () => {
     })
     configureCreatureCombat({ regionId: 'mirefen', defId: 'gnarlwood_wolf', hp: 1 })
     useGame.setState((state) => {
-      state.rngState = seedForRolls(1, (face) => face === 6)
+      state.rngState = seedForRolls(1, (face) => face === 8)
     })
 
     useGame.getState().combatRound(null, 1)
@@ -650,7 +650,7 @@ describe('combat, quests, and inventory invariants', () => {
     })
     configureCreatureCombat({ regionId: 'mirefen', defId: 'stone_golem', hp: 1 })
     useGame.setState((state) => {
-      state.rngState = seedForRolls(selCurrentPlayer(state).dice, (face) => face === 6)
+      state.rngState = seedForRolls(selCurrentPlayer(state).dice, (face) => face === 8)
     })
 
     useGame.getState().combatRound(null, 1)

@@ -28,11 +28,11 @@ export default function Rules({ onClose }) {
 
           <h3>Combat — heroes roll, creatures threaten</h3>
           <ul>
-            <li>Every hero can carry all three color-coded pools: <b>blue 🏹 ranged</b>, <b>red ⚔ melee</b> and <b>green 🛡 guard</b>. Earned attack dice (levels, items, talents) and combat bonuses go to the hero's favored attack pool.</li>
+            <li>Every hero can carry all three color-coded pools of <b>eight-sided dice</b>: <b>blue 🏹 ranged</b>, <b>red ⚔ melee</b> and <b>green 🛡 guard</b>. Earned attack dice (levels, items, talents) and combat bonuses go to the hero's favored attack pool.</li>
             <li>Every creature card shows three fixed values: <b>Threat</b> is the target all three of your hero dice colors test against, <b>Attack</b> is its guaranteed retaliation, and <b>Armor</b> automatically soaks that many incoming hits each round. Creatures never roll dice.</li>
-            <li><b>Phase 1 — the volley</b>: blue ranged dice fire first. Meet the creature's Threat for 1 hit; a 6 is a 2-hit critical. Kill it here and it never strikes back.</li>
+            <li><b>Phase 1 — the volley</b>: blue ranged dice fire first. Meet the creature's Threat for 1 hit; an 8 is a 2-hit critical. Kill it here and it never strikes back.</li>
             <li><b>Phase 2 — the clash</b>: every red melee success blunts the creature's fixed Attack by one, then all red successes become delayed melee hits (after the creature's Armor). The clash is simultaneous, so a creature may still wound you as it falls.</li>
-            <li>Each green 🛡 die that meets the creature's Threat blocks one point of Attack. Red clash guard and green guard combine before flat hero Armor reduces whatever remains. In hero duels, guard succeeds on 5+.</li>
+            <li>Each green 🛡 die that meets the creature's Threat blocks one point of Attack. Red clash guard and green guard combine before flat hero Armor reduces whatever remains. In hero duels, attack dice hit on 5+ (8s crit) and guard succeeds on 6+.</li>
             <li>Before rolling you may use <b>one ability</b> (costs energy) and up to <b>one consumable</b>.</li>
             <li>Great beasts fight with <b>⚑ minions</b>: your hits strike the minions first, and each living minion adds fixed Attack — a sharp volley clears them before they matter.</li>
             <li>Creature <b>traits</b> change the normal rhythm — inspect the region or combat card before committing.</li>

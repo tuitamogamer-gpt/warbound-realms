@@ -131,11 +131,11 @@ describe('three-color dice combat', () => {
   })
 
   it('scores every color against Threat without letting crits bypass it', () => {
-    expect(threatHits([3, 4, 5, 6], 4)).toBe(4)
-    expect(threatHits([4, 5, 6], 5)).toBe(3)
-    expect(threatHits([5], 5, true)).toBe(2)
-    expect(threatHits([5], 6, true)).toBe(0)
-    expect(threatBlocks([3, 4, 5, 6], 5)).toBe(2)
+    expect(threatHits([4, 5, 6, 8], 5)).toBe(4)
+    expect(threatHits([5, 6, 8], 6)).toBe(3)
+    expect(threatHits([7], 6, true)).toBe(2)
+    expect(threatHits([7], 8, true)).toBe(0)
+    expect(threatBlocks([4, 5, 6, 8], 6)).toBe(2)
   })
 
   it('caps every creature at one point of fixed Armor', () => {

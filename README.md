@@ -8,7 +8,7 @@ Two factions — the **Radiant Accord** and the **Emberclaw Dominion** — race 
 
 - **19 regions** on a 3D tabletop map — an outer ring joined by two inner crossroads and four far-corner wilds, so every capital has several roads out and there is always more than one way across
 - **8 unique heroes** (4 per faction), each with a signature ability and a **class pool of trainable abilities** — buy them with gold at town Trainers, into slots that unlock at levels 2, 4 and 5
-- **Three-color hero dice combat** in two phases: every hero can carry blue **🏹 ranged**, red **⚔ melee**, and green **🛡 guard** dice. Ranged attacks open the volley; in the clash, every red success both blunts incoming force and becomes delayed melee damage, while green guard reinforces the defense
+- **Three-color hero dice combat** with **eight-sided dice** (as the 2005 classic rolled) in two phases: every hero can carry blue **🏹 ranged**, red **⚔ melee**, and green **🛡 guard** d8s. Ranged attacks open the volley; in the clash, every red success both blunts incoming force and becomes delayed melee damage, while green guard reinforces the defense
 - **13 fixed-profile creature types** across three danger tiers, each showing **Threat** (the hero's success target), guaranteed **Attack**, and automatic **Armor** — creatures never roll. Great beasts fight with **minions** that soak hits and add fixed Attack, while fleeing leaves a creature **provoked** (+1 Attack, up to +2). Slain creatures respawn — sometimes as **Elites** — and can drop **treasure caches**
 - **26 quests with live targets** — draw two, keep one, and reroll or abandon contracts in town
 - **XP and levels (1–5)**, talents, gold, and a **20-item shop** (weapons, armor, trinkets, and combat consumables)

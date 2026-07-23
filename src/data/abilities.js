@@ -61,7 +61,7 @@ export const ABILITIES = {
   },
   living_flame: {
     id: 'living_flame', heroId: 'zyra', type: 'active', cost: 7, energy: 3,
-    name: 'Living Flame', desc: '+2 dice this round, and 5s also count as critical hits.',
+    name: 'Living Flame', desc: '+2 dice this round, and 7s also count as critical hits.',
     effect: { bonusDice: 2, critOn5: true },
   },
   inner_fire: {
@@ -78,7 +78,7 @@ export const ABILITIES = {
   },
   venom_blades: {
     id: 'venom_blades', heroId: 'morvek', type: 'active', cost: 6, energy: 2,
-    name: 'Venom Blades', desc: '+2 dice this round, and 5s also count as critical hits.',
+    name: 'Venom Blades', desc: '+2 dice this round, and 7s also count as critical hits.',
     effect: { bonusDice: 2, critOn5: true },
   },
   fleetfoot: {

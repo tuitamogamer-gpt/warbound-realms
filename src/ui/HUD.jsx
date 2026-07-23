@@ -293,7 +293,7 @@ function RegionInspector() {
   const reachable = reachableRegionIds.includes(regionId)
   const trait = creature?.trait
   const traitName = typeof trait === 'string' ? trait : trait?.name
-  const creatureThreat = creature?.threat ?? creature?.hitOn ?? 4
+  const creatureThreat = creature?.threat ?? creature?.hitOn ?? 5
   const creatureAttack = creature?.attack ?? creature?.dice ?? 0
   const creatureArmor = creature?.armor ?? trait?.armor ?? 0
   const creatureProvokedAttack = creatureProvoked * (GAME.PROVOKED_ATTACK ?? 1)

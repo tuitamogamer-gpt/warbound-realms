@@ -87,7 +87,7 @@ export default function CombatModal() {
   const traitDesc = typeof trait === 'object' ? trait?.desc : null
   // The fallbacks keep old saves and an in-flight engine migration readable.
   // New creature definitions expose threat/attack/armor directly.
-  const creatureThreat = !isPvp ? (def?.threat ?? def?.hitOn ?? 4) : null
+  const creatureThreat = !isPvp ? (def?.threat ?? def?.hitOn ?? 5) : null
   const creatureAttack = !isPvp ? (def?.attack ?? def?.dice ?? 0) : null
   const creatureArmor = !isPvp ? (def?.armor ?? trait?.armor ?? 0) : null
   const provoked = !isPvp ? (combat.provoked ?? combat.threat ?? 0) : 0
@@ -254,7 +254,7 @@ export default function CombatModal() {
               <div className="dice-row">
                 <span className="dice-label">🏹 Volley:</span>
                 {combat.lastRangedRolls.map((v, i) => (
-                  <Die key={`${combat.rollId}-r${i}`} value={v} hitOn={isPvp ? 4 : creatureThreat} critFrom={combat.lastCritOn5 ? 5 : 6} delay={i * 70} variant="ranged" />
+                  <Die key={`${combat.rollId}-r${i}`} value={v} hitOn={isPvp ? 5 : creatureThreat} critFrom={combat.lastCritOn5 ? 7 : 8} delay={i * 70} variant="ranged" />
                 ))}
                 {combat.lastAutoHits > 0 && autoHitPhase === 'ranged' && <span className="auto-hits">+{combat.lastAutoHits} auto</span>}
               </div>
@@ -263,7 +263,7 @@ export default function CombatModal() {
               <div className="dice-row">
                 <span className="dice-label">⚔ Clash:</span>
                 {combat.lastHeroRolls.map((v, i) => (
-                  <Die key={`${combat.rollId}-${i}`} value={v} hitOn={isPvp ? 4 : creatureThreat} critFrom={combat.lastCritOn5 ? 5 : 6} delay={i * 70} variant="melee" />
+                  <Die key={`${combat.rollId}-${i}`} value={v} hitOn={isPvp ? 5 : creatureThreat} critFrom={combat.lastCritOn5 ? 7 : 8} delay={i * 70} variant="melee" />
                 ))}
                 {combat.lastAutoHits > 0 && autoHitPhase === 'melee' && <span className="auto-hits">+{combat.lastAutoHits} auto</span>}
               </div>
@@ -275,8 +275,8 @@ export default function CombatModal() {
                   <Die
                     key={`${combat.rollId}-c${i}`}
                     value={v}
-                    hitOn={4}
-                    critFrom={defEff?.critOn5 ? 5 : 6}
+                    hitOn={5}
+                    critFrom={defEff?.critOn5 || combat.defenderCritOn5 ? 7 : 8}
                     delay={i * 70}
                   />
                 ))}
@@ -286,7 +286,7 @@ export default function CombatModal() {
               <div className="dice-row" aria-label="Defender Guard dice">
                 <span className="dice-label">🛡 Def. Guard:</span>
                 {combat.lastDefenderDefenseRolls.map((v, i) => (
-                  <Die key={`${combat.rollId}-dg${i}`} value={v} hitOn={5} delay={i * 70} variant="defense" />
+                  <Die key={`${combat.rollId}-dg${i}`} value={v} hitOn={6} delay={i * 70} variant="defense" />
                 ))}
               </div>
             )}
@@ -294,7 +294,7 @@ export default function CombatModal() {
               <div className="dice-row">
                 <span className="dice-label">🛡 {isPvp ? 'Atk. Guard:' : 'Guard:'}</span>
                 {combat.lastDefenseRolls.map((v, i) => (
-                  <Die key={`${combat.rollId}-d${i}`} value={v} hitOn={isPvp ? 5 : creatureThreat} delay={i * 70} variant="defense" />
+                  <Die key={`${combat.rollId}-d${i}`} value={v} hitOn={isPvp ? 6 : creatureThreat} delay={i * 70} variant="defense" />
                 ))}
               </div>
             )}

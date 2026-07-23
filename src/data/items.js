@@ -102,7 +102,7 @@ export const ITEMS = {
     slot: 'weapon',
     cost: 9,
     effects: { dice: 1, critOn5: true },
-    desc: '+1 attack die, and your 5s also count as critical hits.',
+    desc: '+1 attack die, and your 7s also count as critical hits.',
   },
   warhammer_of_dawn: {
     id: 'warhammer_of_dawn',

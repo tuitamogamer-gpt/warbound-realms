@@ -21,7 +21,7 @@ export default function DicePools({
         <span className="dice-pool-name">Melee</span>
         <strong>{melee}</strong>
       </span>
-      <span className="dice-pool-chip pool-defense" title="Green guard dice · test against creature Threat (5+ in duels)">
+      <span className="dice-pool-chip pool-defense" title="Green guard dice · test against creature Threat (6+ in duels)">
         <span aria-hidden="true">🛡</span>
         <span className="dice-pool-name">Guard</span>
         <strong>{guard}</strong>
